@@ -254,36 +254,40 @@ async function detectAICLIs() {
     run("gemini --version 2>/dev/null"),
   ]);
 
-  return {
-    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
-    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
-    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
-  };
-}
+  // Auth check is fast enough for initial scan
+  const [claudeAuth, codexAuth, geminiAuth] = await Promise.all([
+    claudeRaw ? run("claude auth status 2>&1") : Promise.resolve(null),
+    codexRaw ? run("codex auth status 2>&1") : Promise.resolve(null),
+    geminiRaw ? run("gemini auth status 2>&1") : Promise.resolve(null),
+  ]);
 
-// Slow: auth + npm latest — called separately on demand
-async function checkAIExtras() {
   function parseAuth(raw) {
-    if (!raw) return null;
+    if (!raw) return false;
     const lower = raw.toLowerCase();
     if (lower.includes("not logged") || lower.includes("not authenticated") || lower.includes("no api key") || lower.includes("usage:")) return false;
     if (lower.includes("error")) return false;
     return true;
   }
 
-  const [claudeAuth, codexAuth, geminiAuth, claudeLatest, codexLatest, geminiLatest] = await Promise.all([
-    run("claude auth status 2>&1"),
-    run("codex auth status 2>&1"),
-    run("gemini auth status 2>&1"),
+  return {
+    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: claudeRaw ? parseAuth(claudeAuth) : null },
+    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: codexRaw ? parseAuth(codexAuth) : null },
+    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: geminiRaw ? parseAuth(geminiAuth) : null },
+  };
+}
+
+// Slow: npm latest versions only — called on demand
+async function checkAIExtras() {
+  const [claudeLatest, codexLatest, geminiLatest] = await Promise.all([
     run("npm view @anthropic-ai/claude-code version 2>/dev/null"),
     run("npm view @openai/codex version 2>/dev/null"),
     run("npm view @google/gemini-cli version 2>/dev/null"),
   ]);
 
   return {
-    claude: { latestVersion: claudeLatest ?? null, authenticated: parseAuth(claudeAuth) },
-    codex: { latestVersion: codexLatest ?? null, authenticated: parseAuth(codexAuth) },
-    gemini: { latestVersion: geminiLatest ?? null, authenticated: parseAuth(geminiAuth) },
+    claude: { latestVersion: claudeLatest ?? null },
+    codex: { latestVersion: codexLatest ?? null },
+    gemini: { latestVersion: geminiLatest ?? null },
   };
 }
 

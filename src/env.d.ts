@@ -88,9 +88,9 @@ interface ElectronAPI {
     rustUpdateAvailable: boolean;
     pyenvLatestAvailable: string | null;
     ai: {
-      claude: { latestVersion: string | null; authenticated: boolean | null };
-      codex: { latestVersion: string | null; authenticated: boolean | null };
-      gemini: { latestVersion: string | null; authenticated: boolean | null };
+      claude: { latestVersion: string | null };
+      codex: { latestVersion: string | null };
+      gemini: { latestVersion: string | null };
     };
   }>;
 }
