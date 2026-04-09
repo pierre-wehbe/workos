@@ -274,7 +274,7 @@ export function ProjectDetailPage({
           <div className="flex-1 min-h-0 px-6 pb-6">
             {terminalOutput || isActiveRunning ? (
               <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
-                <Terminal output={terminalOutput} isRunning={isActiveRunning} />
+                <Terminal key={activeProcess?.id ?? "empty"} output={terminalOutput} isRunning={isActiveRunning} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">

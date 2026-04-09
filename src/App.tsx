@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { useWorkspaces } from "./lib/use-workspaces";
+import { useProjects } from "./lib/use-projects";
 import type { AppConfig, Project } from "./lib/types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
@@ -18,6 +19,8 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
   const [showProcessPanel, setShowProcessPanel] = useState(false);
+  const { projects: allProjects } = useProjects(activeWorkspace?.id ?? null);
+  const pinnedProjects = allProjects.filter((p) => p.pinned);
 
   useEffect(() => {
     window.electronAPI.getConfig().then(setConfig);
@@ -85,10 +88,13 @@ export default function App() {
             <Sidebar
               workspaces={workspaces}
               activeWorkspace={activeWorkspace}
+              pinnedProjects={pinnedProjects}
               onSwitchWorkspace={switchWorkspace}
               onWorkspaceCreated={refreshWorkspaces}
               currentView={view}
               onNavigate={(v) => { setView(v); setSelectedProject(null); }}
+              onOpenProject={(p) => { setSelectedProject(p); setView("dashboard"); }}
+              selectedProjectId={selectedProject?.id ?? null}
             />
             <main className="flex-1 overflow-y-auto">
               {selectedProject ? (
