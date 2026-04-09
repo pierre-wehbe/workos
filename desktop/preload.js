@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   initRepo: (projectPath) => ipcRenderer.invoke("shell:init-repo", projectPath),
   cloneRepo: (repoUrl, targetPath) => ipcRenderer.invoke("shell:clone-repo", repoUrl, targetPath),
   isGitRepo: (dirPath) => ipcRenderer.invoke("shell:is-git-repo", dirPath),
+  gitBranch: (dirPath) => ipcRenderer.invoke("shell:git-branch", dirPath),
+  deleteDirectory: (dirPath) => ipcRenderer.invoke("shell:delete-directory", dirPath),
   runStreaming: (id, cmd) => ipcRenderer.send("shell:run-streaming", { id, cmd }),
   cancelCommand: (id) => ipcRenderer.send("shell:cancel", { id }),
   onStdout: (cb) => {

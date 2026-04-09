@@ -111,6 +111,22 @@ app.whenReady().then(() => {
   ipcMain.handle("shell:is-git-repo", (_e, dirPath) => {
     return fs.existsSync(path.join(dirPath, ".git"));
   });
+  ipcMain.handle("shell:git-branch", (_e, dirPath) => {
+    const env = loadShellEnvironment();
+    try {
+      return execFileSync("git", ["-C", dirPath, "rev-parse", "--abbrev-ref", "HEAD"], { encoding: "utf8", env, timeout: 5000 }).trim();
+    } catch {
+      return null;
+    }
+  });
+  ipcMain.handle("shell:delete-directory", (_e, dirPath) => {
+    try {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
   ipcMain.on("shell:run-streaming", (_e, { id, cmd }) => { if (mainWindow) runStreaming(id, cmd, mainWindow); });
   ipcMain.on("shell:cancel", (_e, { id }) => { cancelProcess(id); });
 

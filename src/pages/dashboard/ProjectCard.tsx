@@ -1,4 +1,5 @@
-import { FolderOpen, Play, Square, Terminal as TerminalIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FolderOpen, GitBranch, Play, Square, Terminal as TerminalIcon } from "lucide-react";
 import type { Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 
@@ -12,12 +13,24 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, isRunning, onStart, onStop, onOpen, onDelete }: ProjectCardProps) {
+  const [branch, setBranch] = useState<string | null>(null);
+
+  useEffect(() => {
+    ipc.gitBranch(project.localPath).then(setBranch);
+  }, [project.localPath]);
+
   return (
     <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-wo-border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors">
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen}>
         <div className="flex items-center gap-2 mb-0.5">
           {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
           <strong className="text-sm font-medium truncate">{project.name}</strong>
+          {branch && (
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-wo-bg-subtle text-[11px] text-wo-text-tertiary font-mono shrink-0">
+              <GitBranch size={10} />
+              {branch}
+            </span>
+          )}
         </div>
         <p className="text-xs text-wo-text-tertiary truncate">{project.localPath}</p>
       </div>

@@ -3,6 +3,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { Sidebar } from "./components/Sidebar";
 import { OnboardingPage } from "./pages/onboarding/OnboardingPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
+import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
 import { useWorkspaces } from "./lib/use-workspaces";
 import { ipc } from "./lib/ipc";
 import type { AppConfig, Project } from "./lib/types";
@@ -10,7 +11,7 @@ import type { AppConfig, Project } from "./lib/types";
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [view, setView] = useState<"dashboard" | "settings">("dashboard");
-  const { workspaces, activeWorkspace, loading, switchWorkspace, refresh: refreshWorkspaces } = useWorkspaces();
+  const { workspaces, activeWorkspace, switchWorkspace, refresh: refreshWorkspaces } = useWorkspaces();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [runningProcessIds, setRunningProcessIds] = useState<Set<string>>(new Set());
 
@@ -66,7 +67,13 @@ export default function App() {
               onNavigate={(v) => { setView(v); setSelectedProject(null); }}
             />
             <main className="flex-1 overflow-y-auto">
-              {view === "dashboard" && activeWorkspace ? (
+              {selectedProject ? (
+                <ProjectDetailPage
+                  project={selectedProject}
+                  onBack={() => setSelectedProject(null)}
+                  onDeleted={() => { setSelectedProject(null); }}
+                />
+              ) : view === "dashboard" && activeWorkspace ? (
                 <DashboardPage
                   workspace={activeWorkspace}
                   onOpenProject={setSelectedProject}

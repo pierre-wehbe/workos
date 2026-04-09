@@ -18,6 +18,8 @@ interface ElectronAPI {
   initRepo: (projectPath: string) => Promise<{ ok: boolean; error?: string }>;
   cloneRepo: (repoUrl: string, targetPath: string) => Promise<{ ok: boolean; error?: string }>;
   isGitRepo: (dirPath: string) => Promise<boolean>;
+  gitBranch: (dirPath: string) => Promise<string | null>;
+  deleteDirectory: (dirPath: string) => Promise<{ ok: boolean; error?: string }>;
   runStreaming: (id: string, cmd: string) => void;
   cancelCommand: (id: string) => void;
   onStdout: (cb: (id: string, chunk: string) => void) => () => void;

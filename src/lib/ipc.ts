@@ -11,6 +11,8 @@ export const ipc = {
   initRepo: (projectPath: string) => api.initRepo(projectPath),
   cloneRepo: (repoUrl: string, targetPath: string) => api.cloneRepo(repoUrl, targetPath),
   isGitRepo: (dirPath: string) => api.isGitRepo(dirPath),
+  gitBranch: (dirPath: string) => api.gitBranch(dirPath),
+  deleteDirectory: (dirPath: string) => api.deleteDirectory(dirPath),
   runStreaming: (id: string, cmd: string) => api.runStreaming(id, cmd),
   cancelCommand: (id: string) => api.cancelCommand(id),
   onStdout: (cb: (id: string, chunk: string) => void) => api.onStdout(cb),
