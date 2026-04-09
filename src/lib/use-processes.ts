@@ -36,7 +36,10 @@ export function useProcesses() {
 
   const stop = useCallback(async (id: string) => {
     await ipc.stopProcess(id);
-  }, []);
+    // Process close event will fire async via onProcessUpdate,
+    // but also do a manual refresh after a short delay as fallback
+    setTimeout(refresh, 1000);
+  }, [refresh]);
 
   const clear = useCallback(async (id: string) => {
     await ipc.clearProcess(id);

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Trash2 } from "lucide-react";
+import { Maximize2, Minimize2, Trash2, X } from "lucide-react";
 import type { ProcessEntry, Workspace } from "../lib/types";
 import { ProcessRow } from "./ProcessRow";
 
@@ -19,16 +19,29 @@ export function ProcessPanel({
 }: ProcessPanelProps) {
   const [filterWorkspace, setFilterWorkspace] = useState<string>(activeWorkspaceId ?? "all");
   const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (expanded) return; // Don't auto-close in fullscreen mode
     const handler = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
     };
-    // Delay to avoid closing immediately on the click that opens it
     const timer = setTimeout(() => document.addEventListener("mousedown", handler), 100);
     return () => { clearTimeout(timer); document.removeEventListener("mousedown", handler); };
-  }, [onClose]);
+  }, [onClose, expanded]);
+
+  // Esc to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (expanded) setExpanded(false);
+        else onClose();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose, expanded]);
 
   const filtered = processes
     .filter((p) => filterWorkspace === "all" || p.workspaceId === filterWorkspace)
@@ -40,7 +53,6 @@ export function ProcessPanel({
         || p.command.toLowerCase().includes(q);
     })
     .sort((a, b) => {
-      // Running first, then by startedAt descending
       if (a.status === "running" && b.status !== "running") return -1;
       if (b.status === "running" && a.status !== "running") return 1;
       return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
@@ -49,11 +61,12 @@ export function ProcessPanel({
   const stoppedCount = processes.filter((p) => p.status !== "running").length;
   const runningCount = processes.filter((p) => p.status === "running").length;
 
+  const panelClass = expanded
+    ? "fixed inset-0 z-50 flex flex-col bg-wo-bg"
+    : "absolute top-full right-0 mt-2 w-[480px] max-h-[600px] flex flex-col rounded-xl bg-wo-bg-elevated border border-wo-border shadow-2xl z-50 overflow-hidden";
+
   return (
-    <div
-      ref={panelRef}
-      className="absolute top-full right-0 mt-2 w-[480px] max-h-[600px] flex flex-col rounded-xl bg-wo-bg-elevated border border-wo-border shadow-2xl z-50 overflow-hidden"
-    >
+    <div ref={panelRef} className={panelClass}>
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between gap-3 p-4 border-b border-wo-border">
         <div className="flex items-center gap-2">
@@ -71,6 +84,14 @@ export function ProcessPanel({
               Clear stopped
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="p-1.5 rounded-md text-wo-text-tertiary hover:bg-wo-bg-subtle transition-colors"
+            title={expanded ? "Minimize" : "Fullscreen"}
+          >
+            {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
           <button type="button" onClick={onClose} className="p-1 rounded-md text-wo-text-tertiary hover:bg-wo-bg-subtle transition-colors">
             <X size={14} />
           </button>
