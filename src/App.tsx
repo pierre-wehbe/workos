@@ -61,6 +61,7 @@ export default function App() {
               workspaces={workspaces}
               activeWorkspace={activeWorkspace}
               onSwitchWorkspace={switchWorkspace}
+              onWorkspaceCreated={refreshWorkspaces}
               currentView={view}
               onNavigate={(v) => { setView(v); setSelectedProject(null); }}
             />

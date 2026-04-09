@@ -6,15 +6,16 @@ interface SidebarProps {
   workspaces: Workspace[];
   activeWorkspace: Workspace | null;
   onSwitchWorkspace: (id: string) => void;
+  onWorkspaceCreated: () => void;
   currentView: "dashboard" | "settings";
   onNavigate: (view: "dashboard" | "settings") => void;
 }
 
-export function Sidebar({ workspaces, activeWorkspace, onSwitchWorkspace, currentView, onNavigate }: SidebarProps) {
+export function Sidebar({ workspaces, activeWorkspace, onSwitchWorkspace, onWorkspaceCreated, currentView, onNavigate }: SidebarProps) {
   return (
     <aside className="w-60 shrink-0 bg-wo-bg-subtle border-r border-wo-border flex flex-col">
       <div className="p-4">
-        <WorkspaceSwitcher workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={onSwitchWorkspace} />
+        <WorkspaceSwitcher workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={onSwitchWorkspace} onCreated={onWorkspaceCreated} />
       </div>
 
       <nav className="flex-1 px-3">
