@@ -1,27 +1,26 @@
-const { execFileSync } = require("node:child_process");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { loadShellEnvironment } = require("./shell-env.js");
 
-function run(cmd, opts = {}) {
-  const env = loadShellEnvironment();
+const execFileAsync = promisify(execFile);
+
+async function run(cmd) {
+  const env = { ...loadShellEnvironment(), HOMEBREW_NO_AUTO_UPDATE: "1", HOMEBREW_NO_ENV_HINTS: "1" };
   try {
-    return execFileSync("/bin/zsh", ["-l", "-c", cmd], {
-      encoding: "utf8", env, timeout: 15000, maxBuffer: 1024 * 1024, ...opts,
-    }).trim();
-  } catch (e) {
+    const { stdout } = await execFileAsync("/bin/zsh", ["-l", "-c", cmd], {
+      encoding: "utf8", env, timeout: 30000, maxBuffer: 1024 * 1024,
+    });
+    return stdout.trim();
+  } catch {
     return null;
   }
 }
 
 function shellFileContains(filePath, pattern) {
-  try {
-    const content = fs.readFileSync(filePath, "utf8");
-    return content.includes(pattern);
-  } catch {
-    return false;
-  }
+  try { return fs.readFileSync(filePath, "utf8").includes(pattern); } catch { return false; }
 }
 
 const HOME = os.homedir();
@@ -30,14 +29,16 @@ const ZPROFILE = path.join(HOME, ".zprofile");
 
 // ─── Homebrew ───
 
-function detectHomebrew() {
-  const version = run("brew --version");
-  if (!version) return { installed: false, version: null, path: null, shellConfigured: false, outdated: null };
+async function detectHomebrew() {
+  const version = await run("brew --version");
+  if (!version) return { installed: false, version: null, path: null, shellConfigured: false, outdatedCount: 0 };
 
-  const brewPath = run("command -v brew");
+  const brewPath = await run("command -v brew");
   const shellOk = shellFileContains(ZPROFILE, "brew shellenv");
-  const outdatedRaw = run("brew outdated --json=v2");
+
+  // Get outdated count without triggering auto-update
   let outdatedCount = 0;
+  const outdatedRaw = await run("brew outdated --json=v2");
   try {
     const parsed = JSON.parse(outdatedRaw || "{}");
     outdatedCount = (parsed.formulae?.length || 0) + (parsed.casks?.length || 0);
@@ -54,50 +55,46 @@ function detectHomebrew() {
 
 // ─── Python (pyenv + poetry) ───
 
-function detectPython() {
-  const pyenvVersion = run("pyenv --version");
-  const pyenvInstalled = !!pyenvVersion;
+async function detectPython() {
+  const [pyenvVersion, poetryVersion, systemPython] = await Promise.all([
+    run("pyenv --version"),
+    run("poetry --version"),
+    run("python3 --version"),
+  ]);
 
+  const pyenvInstalled = !!pyenvVersion;
   let installedVersions = [];
   let globalVersion = null;
-  let shellConfigured = false;
-
-  if (pyenvInstalled) {
-    const versionsRaw = run("pyenv versions --bare");
-    installedVersions = versionsRaw ? versionsRaw.split("\n").map(v => v.trim()).filter(Boolean) : [];
-    globalVersion = run("pyenv global");
-    shellConfigured = shellFileContains(ZSHRC, "pyenv init");
-  }
-
-  const poetryVersion = run("poetry --version");
-  const poetryInstalled = !!poetryVersion;
-  const poetryPath = poetryInstalled ? run("command -v poetry") : null;
-  const poetryShellConfigured = shellFileContains(ZSHRC, ".local/bin");
-
-  // System python as fallback
-  const systemPython = run("python3 --version");
-
-  // Check for available pyenv versions (latest 3.x)
   let latestAvailable = null;
+
   if (pyenvInstalled) {
-    const available = run("pyenv install --list 2>/dev/null | grep -E '^\\s+3\\.' | grep -v dev | grep -v rc | tail -1");
-    latestAvailable = available?.trim() || null;
+    const [versionsRaw, globalRaw, availableRaw] = await Promise.all([
+      run("pyenv versions --bare"),
+      run("pyenv global"),
+      run("pyenv install --list 2>/dev/null | grep -E '^\\s+3\\.' | grep -v dev | grep -v rc | tail -1"),
+    ]);
+    installedVersions = versionsRaw ? versionsRaw.split("\n").map(v => v.trim()).filter(Boolean) : [];
+    globalVersion = globalRaw?.trim() || null;
+    latestAvailable = availableRaw?.trim() || null;
   }
+
+  const poetryInstalled = !!poetryVersion;
+  const poetryPath = poetryInstalled ? await run("command -v poetry") : null;
 
   return {
     pyenv: {
       installed: pyenvInstalled,
       version: pyenvVersion?.replace("pyenv ", "") ?? null,
-      shellConfigured,
+      shellConfigured: shellFileContains(ZSHRC, "pyenv init"),
       installedVersions,
-      globalVersion: globalVersion?.trim() || null,
+      globalVersion,
       latestAvailable,
     },
     poetry: {
       installed: poetryInstalled,
       version: poetryVersion?.replace("Poetry (version ", "").replace(")", "").replace("Poetry ", "") ?? null,
       path: poetryPath,
-      shellConfigured: poetryShellConfigured,
+      shellConfigured: shellFileContains(ZSHRC, ".local/bin"),
     },
     systemPython: systemPython?.replace("Python ", "") ?? null,
   };
@@ -105,108 +102,81 @@ function detectPython() {
 
 // ─── Node (bun) ───
 
-function detectNode() {
-  const bunVersion = run("bun --version");
-  const bunInstalled = !!bunVersion;
-  const bunPath = bunInstalled ? run("command -v bun") : null;
+async function detectNode() {
+  const [bunVersion, nodeVersion, npmVersion] = await Promise.all([
+    run("bun --version"),
+    run("node --version"),
+    run("npm --version"),
+  ]);
 
-  // Also check for node/npm as they may coexist
-  const nodeVersion = run("node --version");
-  const npmVersion = run("npm --version");
+  const bunInstalled = !!bunVersion;
+  const bunPath = bunInstalled ? await run("command -v bun") : null;
   const nvmDir = process.env.NVM_DIR || path.join(HOME, ".nvm");
   const nvmInstalled = fs.existsSync(path.join(nvmDir, "nvm.sh"));
 
-  // Check for bun update
   let bunLatest = null;
   if (bunInstalled) {
-    // bun doesn't have a built-in "check for update" — we'll compare with brew
-    const brewBunInfo = run("brew info oven-sh/bun/bun --json=v2 2>/dev/null");
+    const brewBunInfo = await run("brew info oven-sh/bun/bun --json=v2 2>/dev/null");
     try {
       const parsed = JSON.parse(brewBunInfo || "{}");
-      const formula = parsed.formulae?.[0];
-      if (formula) bunLatest = formula.versions?.stable || null;
+      bunLatest = parsed.formulae?.[0]?.versions?.stable || null;
     } catch {}
   }
 
   return {
-    bun: {
-      installed: bunInstalled,
-      version: bunVersion ?? null,
-      path: bunPath,
-      latestVersion: bunLatest,
-    },
-    node: {
-      installed: !!nodeVersion,
-      version: nodeVersion?.replace("v", "") ?? null,
-    },
-    npm: {
-      installed: !!npmVersion,
-      version: npmVersion ?? null,
-    },
-    nvm: {
-      installed: nvmInstalled,
-    },
+    bun: { installed: bunInstalled, version: bunVersion ?? null, path: bunPath, latestVersion: bunLatest },
+    node: { installed: !!nodeVersion, version: nodeVersion?.replace("v", "") ?? null },
+    npm: { installed: !!npmVersion, version: npmVersion ?? null },
+    nvm: { installed: nvmInstalled },
   };
 }
 
 // ─── Rust ───
 
-function detectRust() {
-  const rustupVersion = run("rustup --version");
-  const rustupInstalled = !!rustupVersion;
-
-  let activeToolchain = null;
-  let installedToolchains = [];
-  let installedTargets = [];
-  let rustcVersion = null;
-  let cargoVersion = null;
-  let shellConfigured = false;
-
-  if (rustupInstalled) {
-    activeToolchain = run("rustup show active-toolchain")?.split(" ")[0] ?? null;
-    const toolchainsRaw = run("rustup toolchain list");
-    installedToolchains = toolchainsRaw ? toolchainsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [];
-    const targetsRaw = run("rustup target list --installed");
-    installedTargets = targetsRaw ? targetsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [];
-    rustcVersion = run("rustc --version")?.replace("rustc ", "").split(" ")[0] ?? null;
-    cargoVersion = run("cargo --version")?.replace("cargo ", "").split(" ")[0] ?? null;
-    shellConfigured = shellFileContains(ZSHRC, ".cargo/bin") || shellFileContains(ZPROFILE, ".cargo/bin");
+async function detectRust() {
+  const rustupVersion = await run("rustup --version");
+  if (!rustupVersion) {
+    return {
+      rustup: { installed: false, version: null },
+      rustc: { version: null }, cargo: { version: null },
+      activeToolchain: null, installedToolchains: [], installedTargets: [],
+      shellConfigured: false, updateAvailable: false,
+    };
   }
 
-  // Check for update
-  let updateAvailable = false;
-  if (rustupInstalled) {
-    const check = run("rustup check 2>/dev/null");
-    updateAvailable = check ? check.includes("Update available") : false;
-  }
+  const [toolchainRaw, toolchainsRaw, targetsRaw, rustcRaw, cargoRaw, checkRaw] = await Promise.all([
+    run("rustup show active-toolchain"),
+    run("rustup toolchain list"),
+    run("rustup target list --installed"),
+    run("rustc --version"),
+    run("cargo --version"),
+    run("rustup check 2>/dev/null"),
+  ]);
 
   return {
-    rustup: {
-      installed: rustupInstalled,
-      version: rustupVersion?.split(" ")[1] ?? null,
-    },
-    rustc: { version: rustcVersion },
-    cargo: { version: cargoVersion },
-    activeToolchain,
-    installedToolchains,
-    installedTargets,
-    shellConfigured,
-    updateAvailable,
+    rustup: { installed: true, version: rustupVersion.split(" ")[1] ?? null },
+    rustc: { version: rustcRaw?.replace("rustc ", "").split(" ")[0] ?? null },
+    cargo: { version: cargoRaw?.replace("cargo ", "").split(" ")[0] ?? null },
+    activeToolchain: toolchainRaw?.split(" ")[0] ?? null,
+    installedToolchains: toolchainsRaw ? toolchainsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [],
+    installedTargets: targetsRaw ? targetsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [],
+    shellConfigured: shellFileContains(ZSHRC, ".cargo/bin") || shellFileContains(ZPROFILE, ".cargo/bin"),
+    updateAvailable: checkRaw ? checkRaw.includes("Update available") : false,
   };
 }
 
 // ─── Android ───
 
-function detectAndroid() {
+async function detectAndroid() {
   const studioExists = fs.existsSync("/Applications/Android Studio.app");
   const androidHome = process.env.ANDROID_HOME || path.join(HOME, "Library/Android/sdk");
   const sdkExists = fs.existsSync(androidHome);
-  const sdkmanager = sdkExists ? path.join(androidHome, "cmdline-tools/latest/bin/sdkmanager") : null;
   const shellConfigured = shellFileContains(ZSHRC, "ANDROID_HOME") || shellFileContains(ZPROFILE, "ANDROID_HOME");
 
   let installedPackages = [];
-  if (sdkmanager && fs.existsSync(sdkmanager)) {
-    const raw = run(`"${sdkmanager}" --list_installed 2>/dev/null`);
+  const sdkmanager = path.join(androidHome, "cmdline-tools/latest/bin/sdkmanager");
+  if (sdkExists && fs.existsSync(sdkmanager)) {
+    const raw = await run(`"${sdkmanager}" --list_installed 2>/dev/null`);
     if (raw) {
       installedPackages = raw.split("\n")
         .filter(l => l.includes("|"))
@@ -216,7 +186,7 @@ function detectAndroid() {
     }
   }
 
-  const kotlinVersion = run("kotlin -version 2>/dev/null");
+  const kotlinVersion = await run("kotlin -version 2>/dev/null");
 
   return {
     studio: { installed: studioExists },
@@ -229,26 +199,27 @@ function detectAndroid() {
 
 // ─── Swift / Xcode ───
 
-function detectSwift() {
-  const xcodeSelect = run("xcode-select -p");
-  const xcodeInstalled = !!xcodeSelect;
-  const xcodeVersion = run("xcodebuild -version 2>/dev/null")?.split("\n")[0]?.replace("Xcode ", "") ?? null;
-  const swiftVersion = run("swift --version")?.match(/Swift version ([\d.]+)/)?.[1] ?? null;
-  const swiftformatVersion = run("swiftformat --version");
-  const swiftlintVersion = run("swiftlint version");
-  const cocoapodsVersion = run("pod --version");
+async function detectSwift() {
+  const [xcodeSelect, xcodeVersionRaw, swiftRaw, swiftformatRaw, swiftlintRaw, cocoapodsRaw] = await Promise.all([
+    run("xcode-select -p"),
+    run("xcodebuild -version 2>/dev/null"),
+    run("swift --version"),
+    run("swiftformat --version"),
+    run("swiftlint version"),
+    run("pod --version"),
+  ]);
 
   return {
     xcode: {
-      installed: xcodeInstalled,
+      installed: !!xcodeSelect,
       path: xcodeSelect,
-      version: xcodeVersion,
+      version: xcodeVersionRaw?.split("\n")[0]?.replace("Xcode ", "") ?? null,
     },
-    swift: { version: swiftVersion },
+    swift: { version: swiftRaw?.match(/Swift version ([\d.]+)/)?.[1] ?? null },
     tools: {
-      swiftformat: swiftformatVersion ?? null,
-      swiftlint: swiftlintVersion ?? null,
-      cocoapods: cocoapodsVersion ?? null,
+      swiftformat: swiftformatRaw ?? null,
+      swiftlint: swiftlintRaw ?? null,
+      cocoapods: cocoapodsRaw ?? null,
     },
   };
 }
@@ -256,47 +227,37 @@ function detectSwift() {
 // ─── Shell Config Audit ───
 
 function auditShellConfig() {
-  const issues = [];
-  const zshrcExists = fs.existsSync(ZSHRC);
-  const zprofileExists = fs.existsSync(ZPROFILE);
-  let zshrcContent = "";
-  let zprofileContent = "";
-  try { zshrcContent = fs.readFileSync(ZSHRC, "utf8"); } catch {}
-  try { zprofileContent = fs.readFileSync(ZPROFILE, "utf8"); } catch {}
-
   const checks = [
-    { file: ZPROFILE, pattern: "brew shellenv", label: "Homebrew shellenv", fix: 'eval "$(/opt/homebrew/bin/brew shellenv)"' },
-    { file: ZSHRC, pattern: "pyenv init", label: "pyenv init", fix: 'eval "$(pyenv init -)"' },
-    { file: ZSHRC, pattern: ".local/bin", label: "Poetry PATH", fix: 'export PATH="$HOME/.local/bin:$PATH"' },
-    { file: ZSHRC, pattern: ".cargo/bin", label: "Cargo PATH", fix: 'export PATH="$HOME/.cargo/bin:$PATH"' },
-    { file: ZSHRC, pattern: "ANDROID_HOME", label: "ANDROID_HOME", fix: 'export ANDROID_HOME="$HOME/Library/Android/sdk"\nexport PATH="$ANDROID_HOME/platform-tools:$PATH"' },
+    { file: ".zprofile", pattern: "brew shellenv", label: "Homebrew shellenv", fix: 'eval "$(/opt/homebrew/bin/brew shellenv)"' },
+    { file: ".zshrc", pattern: "pyenv init", label: "pyenv init", fix: 'eval "$(pyenv init -)"' },
+    { file: ".zshrc", pattern: ".local/bin", label: "Poetry PATH", fix: 'export PATH="$HOME/.local/bin:$PATH"' },
+    { file: ".zshrc", pattern: ".cargo/bin", label: "Cargo PATH", fix: 'export PATH="$HOME/.cargo/bin:$PATH"' },
+    { file: ".zshrc", pattern: "ANDROID_HOME", label: "ANDROID_HOME", fix: 'export ANDROID_HOME="$HOME/Library/Android/sdk"\nexport PATH="$ANDROID_HOME/platform-tools:$PATH"' },
   ];
 
-  for (const check of checks) {
-    const content = check.file === ZPROFILE ? zprofileContent : zshrcContent;
-    issues.push({
-      file: check.file === ZPROFILE ? ".zprofile" : ".zshrc",
-      label: check.label,
-      configured: content.includes(check.pattern),
-      fix: check.fix,
-    });
-  }
-
-  return { zshrcExists, zprofileExists, issues };
+  return {
+    zshrcExists: fs.existsSync(ZSHRC),
+    zprofileExists: fs.existsSync(ZPROFILE),
+    issues: checks.map((c) => ({
+      ...c,
+      configured: shellFileContains(c.file === ".zprofile" ? ZPROFILE : ZSHRC, c.pattern),
+    })),
+  };
 }
 
-// ─── Full Scan ───
+// ─── Full Scan (async, parallel) ───
 
-function scanMachine() {
-  return {
-    homebrew: detectHomebrew(),
-    python: detectPython(),
-    node: detectNode(),
-    rust: detectRust(),
-    android: detectAndroid(),
-    swift: detectSwift(),
-    shell: auditShellConfig(),
-  };
+async function scanMachine() {
+  const [homebrew, python, node, rust, android, swift] = await Promise.all([
+    detectHomebrew(),
+    detectPython(),
+    detectNode(),
+    detectRust(),
+    detectAndroid(),
+    detectSwift(),
+  ]);
+
+  return { homebrew, python, node, rust, android, swift, shell: auditShellConfig() };
 }
 
 function fixShellConfig(file, line) {
