@@ -88,7 +88,9 @@
       "Bash(/bin/zsh -l -c 'if [ -f ~/.ssh/id_ed25519.pub ]; then cat ~/.ssh/id_ed25519.pub; elif [ -f ~/.ssh/id_rsa.pub ]; then cat ~/.ssh/id_rsa.pub; else exit 1; fi')",
       "Bash(node -e \"const d = require\\('./desktop/discovery.js'\\); const r = d.discoverScripts\\('.'\\); console.log\\(JSON.stringify\\(r, null, 2\\)\\)\")",
       "Read(//Users/pierro/**)",
-      "Read(//Users/pierro/.oh-my-zsh/plugins/pyenv/**)"
+      "Read(//Users/pierro/.oh-my-zsh/plugins/pyenv/**)",
+      "Bash(gh auth:*)",
+      "Bash(gh api:*)"
     ]
   }
 }

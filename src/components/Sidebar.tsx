@@ -1,4 +1,4 @@
-import { FolderOpen, LayoutDashboard, Pin, Settings } from "lucide-react";
+import { FolderOpen, GitPullRequest, LayoutDashboard, Pin, Settings } from "lucide-react";
 import type { Project, Workspace } from "../lib/types";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
@@ -6,16 +6,17 @@ interface SidebarProps {
   workspaces: Workspace[];
   activeWorkspace: Workspace | null;
   pinnedProjects: Project[];
+  reviewRequestCount: number;
   onSwitchWorkspace: (id: string) => void;
   onWorkspaceCreated: () => void;
-  currentView: "dashboard" | "settings";
-  onNavigate: (view: "dashboard" | "settings") => void;
+  currentView: string;
+  onNavigate: (view: "dashboard" | "settings" | "github") => void;
   onOpenProject: (project: Project) => void;
   selectedProjectId: string | null;
 }
 
 export function Sidebar({
-  workspaces, activeWorkspace, pinnedProjects,
+  workspaces, activeWorkspace, pinnedProjects, reviewRequestCount,
   onSwitchWorkspace, onWorkspaceCreated,
   currentView, onNavigate, onOpenProject, selectedProjectId,
 }: SidebarProps) {
@@ -35,6 +36,24 @@ export function Sidebar({
         >
           <LayoutDashboard size={16} />
           Dashboard
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onNavigate("github")}
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            currentView === "github" ? "bg-wo-accent-soft text-wo-accent" : "text-wo-text-secondary hover:bg-wo-bg"
+          }`}
+        >
+          <span className="flex items-center gap-2.5">
+            <GitPullRequest size={16} />
+            GitHub
+          </span>
+          {reviewRequestCount > 0 && (
+            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-wo-danger text-white text-[10px] font-bold">
+              {reviewRequestCount}
+            </span>
+          )}
         </button>
 
         {pinnedProjects.length > 0 && (

@@ -175,6 +175,13 @@ app.whenReady().then(() => {
   ipcMain.handle("machine:pyenv-global", (_e, version) => machine.setPyenvGlobal(version));
   ipcMain.handle("machine:check-updates", () => machine.checkUpdates());
 
+  // --- GitHub ---
+  const github = require("./github.js");
+  github.init(mainWindow);
+  ipcMain.handle("github:fetch", () => github.fetchAll());
+  ipcMain.handle("github:cache", () => github.getCache());
+  ipcMain.handle("github:check", () => github.checkGhInstalled());
+
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));
   ipcMain.handle("process:stop", (_e, id) => processes.stopProcess(id));
@@ -190,5 +197,5 @@ app.whenReady().then(() => {
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on("before-quit", () => { killAll(); processes.killAll(); });
+app.on("before-quit", () => { killAll(); processes.killAll(); github.destroy(); });
 app.on("window-all-closed", () => { app.quit(); });

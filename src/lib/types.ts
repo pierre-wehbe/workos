@@ -135,3 +135,27 @@ export interface MachineInfo {
     }>;
   };
 }
+
+export interface GitHubPR {
+  id: string;
+  repo: string;
+  repoName: string;
+  owner: string;
+  number: number;
+  title: string;
+  state: string;
+  isDraft: boolean;
+  reviewDecision: "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
+  url: string;
+  updatedAt: string;
+  author: string;
+  labels: string[];
+}
+
+export interface GitHubData {
+  myPRs: GitHubPR[];
+  reviewRequests: GitHubPR[];
+  username: string | null;
+  lastFetched: string | null;
+  reviewRequestCount: number;
+}

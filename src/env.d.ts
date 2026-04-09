@@ -93,6 +93,12 @@ interface ElectronAPI {
       gemini: { latestVersion: string | null };
     };
   }>;
+
+  // GitHub
+  githubFetch: () => Promise<import("./lib/types").GitHubData>;
+  githubCache: () => Promise<import("./lib/types").GitHubData>;
+  githubCheck: () => Promise<{ installed: boolean; authenticated: boolean; username: string | null }>;
+  onGithubUpdate: (cb: (data: import("./lib/types").GitHubData) => void) => () => void;
 }
 
 declare global {

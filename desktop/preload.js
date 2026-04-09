@@ -70,6 +70,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setPyenvGlobal: (version) => ipcRenderer.invoke("machine:pyenv-global", version),
   checkMachineUpdates: () => ipcRenderer.invoke("machine:check-updates"),
 
+  // GitHub
+  githubFetch: () => ipcRenderer.invoke("github:fetch"),
+  githubCache: () => ipcRenderer.invoke("github:cache"),
+  githubCheck: () => ipcRenderer.invoke("github:check"),
+  onGithubUpdate: (cb) => {
+    const handler = (_e, d) => cb(d);
+    ipcRenderer.on("github:update", handler);
+    return () => ipcRenderer.removeListener("github:update", handler);
+  },
+
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),
   stopProcess: (id) => ipcRenderer.invoke("process:stop", id),

@@ -5,8 +5,10 @@ import { OnboardingPage } from "./pages/onboarding/OnboardingPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
+import { GitHubPage } from "./pages/github/GitHubPage";
 import { useWorkspaces } from "./lib/use-workspaces";
 import { useProjects } from "./lib/use-projects";
+import { useGitHub } from "./lib/use-github";
 import type { AppConfig, Project } from "./lib/types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
@@ -14,13 +16,14 @@ import { useProcesses } from "./lib/use-processes";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
-  const [view, setView] = useState<"dashboard" | "settings">("dashboard");
+  const [view, setView] = useState<"dashboard" | "settings" | "github">("dashboard");
   const { workspaces, activeWorkspace, switchWorkspace, refresh: refreshWorkspaces } = useWorkspaces();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
   const [showProcessPanel, setShowProcessPanel] = useState(false);
   const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
+  const github = useGitHub();
 
   useEffect(() => {
     window.electronAPI.getConfig().then(setConfig);
@@ -89,9 +92,10 @@ export default function App() {
               workspaces={workspaces}
               activeWorkspace={activeWorkspace}
               pinnedProjects={pinnedProjects}
+              reviewRequestCount={github.reviewRequestCount}
               onSwitchWorkspace={switchWorkspace}
               onWorkspaceCreated={refreshWorkspaces}
-              currentView={view}
+              currentView={selectedProject ? "project" : view}
               onNavigate={(v) => { setView(v); setSelectedProject(null); }}
               onOpenProject={(p) => { setSelectedProject(p); setView("dashboard"); }}
               selectedProjectId={selectedProject?.id ?? null}
@@ -116,6 +120,13 @@ export default function App() {
                   onStartProcess={handleStartProcess}
                   onStopProcess={handleStopProcess}
                   onProjectsChanged={refreshProjects}
+                />
+              ) : view === "github" ? (
+                <GitHubPage
+                  data={github}
+                  loading={github.loading}
+                  onRefresh={github.refresh}
+                  projects={allProjects}
                 />
               ) : view === "settings" ? (
                 <SettingsPage

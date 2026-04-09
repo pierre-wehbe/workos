@@ -54,4 +54,8 @@ export const ipc = {
   checkBrewOutdated: () => api.checkBrewOutdated(),
   setPyenvGlobal: (version: string) => api.setPyenvGlobal(version),
   checkMachineUpdates: () => api.checkMachineUpdates(),
+  githubFetch: () => api.githubFetch(),
+  githubCache: () => api.githubCache(),
+  githubCheck: () => api.githubCheck(),
+  onGithubUpdate: (cb: (data: import("./types").GitHubData) => void) => api.onGithubUpdate(cb),
 } as const;
