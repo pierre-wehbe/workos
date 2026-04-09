@@ -30,7 +30,7 @@ async function fetchMyPRs() {
   const raw = await gh([
     "search", "prs",
     "--author=@me", "--state=open",
-    "--json", "repository,number,title,state,isDraft,reviewDecision,url,updatedAt,author,labels",
+    "--json", "repository,number,title,state,isDraft,url,updatedAt,author,labels",
     "--limit", "50",
   ]);
   if (!raw) return [];
@@ -44,7 +44,7 @@ async function fetchReviewRequests() {
   const raw = await gh([
     "search", "prs",
     "--review-requested=@me", "--state=open",
-    "--json", "repository,number,title,state,isDraft,reviewDecision,url,updatedAt,author,labels",
+    "--json", "repository,number,title,state,isDraft,url,updatedAt,author,labels",
     "--limit", "50",
   ]);
   if (!raw) return [];
@@ -64,7 +64,7 @@ function normalizePR(pr) {
     title: pr.title,
     state: pr.state,
     isDraft: pr.isDraft ?? false,
-    reviewDecision: pr.reviewDecision ?? null, // APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED, null
+    reviewDecision: null, // Not available from gh search — could be fetched via GraphQL later
     url: pr.url,
     updatedAt: pr.updatedAt,
     author: pr.author?.login ?? "unknown",
