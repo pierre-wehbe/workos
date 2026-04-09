@@ -7,6 +7,7 @@ export const ipc = {
   setTheme: (mode: import("./types").ThemeMode) => api.setTheme(mode),
   runSync: (cmd: string) => api.runSync(cmd),
   selectDirectory: () => api.selectDirectory(),
+  scanRepos: (wsPath: string) => api.scanRepos(wsPath),
   runStreaming: (id: string, cmd: string) => api.runStreaming(id, cmd),
   cancelCommand: (id: string) => api.cancelCommand(id),
   onStdout: (cb: (id: string, chunk: string) => void) => api.onStdout(cb),

@@ -1,6 +1,7 @@
 const { BrowserWindow, app, dialog, ipcMain, nativeTheme, session } = require("electron");
 const path = require("node:path");
-const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const { spawn, execFileSync } = require("node:child_process");
 const { loadShellEnvironment } = require("./shell-env.js");
 const db = require("./db.js");
 const { runSync, runStreaming, cancelProcess, killAll } = require("./executor.js");
@@ -62,6 +63,31 @@ app.whenReady().then(() => {
     if (!mainWindow) return null;
     const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory", "createDirectory"] });
     return result.canceled ? null : result.filePaths[0];
+  });
+  ipcMain.handle("shell:scan-repos", (_e, wsPath) => {
+    const env = loadShellEnvironment();
+    const entries = fs.readdirSync(wsPath, { withFileTypes: true });
+    const repos = [];
+
+    // Check if workspace itself is a repo
+    if (fs.existsSync(path.join(wsPath, ".git"))) {
+      const name = path.basename(wsPath);
+      let repoUrl = "";
+      try { repoUrl = execFileSync("git", ["-C", wsPath, "remote", "get-url", "origin"], { encoding: "utf8", env, timeout: 5000 }).trim(); } catch {}
+      repos.push({ name, localPath: wsPath, repoUrl });
+    }
+
+    // Check 1 level deep
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+      const fullPath = path.join(wsPath, entry.name);
+      if (!fs.existsSync(path.join(fullPath, ".git"))) continue;
+      let repoUrl = "";
+      try { repoUrl = execFileSync("git", ["-C", fullPath, "remote", "get-url", "origin"], { encoding: "utf8", env, timeout: 5000 }).trim(); } catch {}
+      repos.push({ name: entry.name, localPath: fullPath, repoUrl });
+    }
+
+    return repos;
   });
   ipcMain.on("shell:run-streaming", (_e, { id, cmd }) => { if (mainWindow) runStreaming(id, cmd, mainWindow); });
   ipcMain.on("shell:cancel", (_e, { id }) => { cancelProcess(id); });

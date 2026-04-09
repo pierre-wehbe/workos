@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Shell
   runSync: (cmd) => ipcRenderer.invoke("shell:run-sync", cmd),
   selectDirectory: () => ipcRenderer.invoke("shell:select-directory"),
+  scanRepos: (wsPath) => ipcRenderer.invoke("shell:scan-repos", wsPath),
   runStreaming: (id, cmd) => ipcRenderer.send("shell:run-streaming", { id, cmd }),
   cancelCommand: (id) => ipcRenderer.send("shell:cancel", { id }),
   onStdout: (cb) => {
