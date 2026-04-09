@@ -1,15 +1,16 @@
 import { useState } from "react";
 import {
-  Check, Circle, Clock, ExternalLink, Eye, GitPullRequest,
+  Check, Circle, Clock, ExternalLink, Eye, Filter, GitPullRequest,
   Loader2, MessageSquare, RefreshCw, X,
 } from "lucide-react";
-import type { GitHubPR, GitHubData, Project } from "../../lib/types";
+import type { GitHubPR, GitHubData, Project, Workspace } from "../../lib/types";
 
 interface GitHubPageProps {
   data: GitHubData;
   loading: boolean;
   onRefresh: () => void;
   projects: Project[];
+  activeWorkspace: Workspace | null;
 }
 
 function ReviewBadge({ decision }: { decision: GitHubPR["reviewDecision"] }) {
@@ -38,13 +39,13 @@ function PRRow({ pr }: { pr: GitHubPR }) {
       className="flex items-start justify-between gap-3 p-3 rounded-lg border border-wo-border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors group"
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="text-[11px] font-mono text-wo-text-tertiary">{pr.repo}#{pr.number}</span>
           {pr.isDraft && <span className="px-1.5 py-0.5 rounded bg-wo-bg-subtle text-[10px] text-wo-text-tertiary">Draft</span>}
           <ReviewBadge decision={pr.reviewDecision} />
         </div>
         <p className="text-sm font-medium truncate">{pr.title}</p>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-[11px] text-wo-text-tertiary">{pr.author}</span>
           <span className="text-[11px] text-wo-text-tertiary flex items-center gap-1">
             <Clock size={9} /> {new Date(pr.updatedAt).toLocaleDateString()}
@@ -59,21 +60,55 @@ function PRRow({ pr }: { pr: GitHubPR }) {
   );
 }
 
-export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPageProps) {
+function FilterChip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`inline-flex items-center gap-1 px-2.5 h-7 rounded-full text-xs font-medium transition-colors ${
+        active ? "bg-wo-accent-soft text-wo-accent" : "bg-wo-bg-subtle text-wo-text-tertiary hover:text-wo-text-secondary"
+      }`}>
+      {label}
+      {count !== undefined && count > 0 && <span className="text-[10px] opacity-70">{count}</span>}
+    </button>
+  );
+}
+
+export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace }: GitHubPageProps) {
   const [tab, setTab] = useState<"my-prs" | "reviews">("reviews");
+  const [filterScope, setFilterScope] = useState<"workspace" | "all">("workspace");
+  const [showDrafts, setShowDrafts] = useState(true);
   const [filterRepo, setFilterRepo] = useState<string>("all");
 
-  // Build unique repo list from PRs
-  const allRepos = [...new Set([
-    ...data.myPRs.map((p) => p.repo),
-    ...data.reviewRequests.map((p) => p.repo),
-  ])].sort();
-
-  // Also match repos to workspace projects
-  const projectRepos = new Set(projects.map((p) => p.repoUrl).filter(Boolean));
+  const wsOrg = activeWorkspace?.org?.toLowerCase() ?? "";
 
   const prs = tab === "my-prs" ? data.myPRs : data.reviewRequests;
-  const filtered = filterRepo === "all" ? prs : prs.filter((p) => p.repo === filterRepo);
+
+  // Apply filters in order
+  let filtered = prs;
+
+  // Scope filter: workspace org or all
+  if (filterScope === "workspace" && wsOrg) {
+    filtered = filtered.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/"));
+  }
+
+  // Draft filter
+  if (!showDrafts) {
+    filtered = filtered.filter((p) => !p.isDraft);
+  }
+
+  // Repo filter
+  if (filterRepo !== "all") {
+    filtered = filtered.filter((p) => p.repo === filterRepo);
+  }
+
+  // Counts for filter chips
+  const draftCount = prs.filter((p) => p.isDraft).length;
+  const wsCount = wsOrg ? prs.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/")).length : 0;
+
+  // Build unique repo list from current scope
+  const scopedPRs = filterScope === "workspace" && wsOrg
+    ? prs.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/"))
+    : prs;
+  const allRepos = [...new Set(scopedPRs.map((p) => p.repo))].sort();
 
   return (
     <div className="h-full flex flex-col">
@@ -93,12 +128,8 @@ export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPagePro
                 Updated {new Date(data.lastFetched).toLocaleTimeString()}
               </span>
             )}
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-wo-border text-xs font-medium text-wo-text hover:bg-wo-bg-subtle transition-colors disabled:opacity-50"
-            >
+            <button type="button" onClick={onRefresh} disabled={loading}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-wo-border text-xs font-medium text-wo-text hover:bg-wo-bg-subtle transition-colors disabled:opacity-50">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing..." : "Refresh"}
             </button>
@@ -106,10 +137,10 @@ export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPagePro
         </div>
       </div>
 
-      {/* Tabs + Filter */}
+      {/* Tabs */}
       <div className="shrink-0 flex items-center justify-between px-6 border-b border-wo-border">
         <div className="flex gap-1">
-          <button type="button" onClick={() => setTab("reviews")}
+          <button type="button" onClick={() => { setTab("reviews"); setFilterRepo("all"); }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               tab === "reviews" ? "border-wo-accent text-wo-accent" : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
             }`}>
@@ -118,7 +149,7 @@ export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPagePro
               <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-wo-danger text-white text-[10px] font-bold">{data.reviewRequestCount}</span>
             )}
           </button>
-          <button type="button" onClick={() => setTab("my-prs")}
+          <button type="button" onClick={() => { setTab("my-prs"); setFilterRepo("all"); }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               tab === "my-prs" ? "border-wo-accent text-wo-accent" : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
             }`}>
@@ -126,13 +157,30 @@ export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPagePro
             <span className="ml-1.5 text-wo-text-tertiary text-[11px]">{data.myPRs.length}</span>
           </button>
         </div>
-        {allRepos.length > 1 && (
-          <select value={filterRepo} onChange={(e) => setFilterRepo(e.target.value)}
-            className="h-7 px-2 rounded-md border border-wo-border bg-wo-bg text-xs text-wo-text focus:outline-none">
-            <option value="all">All repos ({prs.length})</option>
-            {allRepos.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+      </div>
+
+      {/* Filters */}
+      <div className="shrink-0 flex items-center gap-2 px-6 py-2.5 border-b border-wo-border flex-wrap">
+        <Filter size={12} className="text-wo-text-tertiary" />
+        {wsOrg && (
+          <>
+            <FilterChip label={activeWorkspace?.name ?? wsOrg} active={filterScope === "workspace"} count={wsCount} onClick={() => setFilterScope("workspace")} />
+            <FilterChip label="All orgs" active={filterScope === "all"} count={prs.length} onClick={() => setFilterScope("all")} />
+            <span className="w-px h-4 bg-wo-border mx-1" />
+          </>
         )}
+        <FilterChip label="Drafts" active={showDrafts} count={draftCount} onClick={() => setShowDrafts(!showDrafts)} />
+        {allRepos.length > 1 && (
+          <>
+            <span className="w-px h-4 bg-wo-border mx-1" />
+            <select value={filterRepo} onChange={(e) => setFilterRepo(e.target.value)}
+              className="h-7 px-2 rounded-md border border-wo-border bg-wo-bg text-xs text-wo-text focus:outline-none">
+              <option value="all">All repos</option>
+              {allRepos.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </>
+        )}
+        <span className="ml-auto text-[11px] text-wo-text-tertiary">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
       </div>
 
       {/* List */}
@@ -149,6 +197,11 @@ export function GitHubPage({ data, loading, onRefresh, projects }: GitHubPagePro
             <p className="text-sm text-wo-text-secondary">
               {tab === "reviews" ? "No pending review requests" : "No open pull requests"}
             </p>
+            {filterScope === "workspace" && wsOrg && (
+              <button type="button" onClick={() => setFilterScope("all")} className="mt-2 text-xs text-wo-accent hover:text-wo-accent-hover transition-colors">
+                Show all orgs
+              </button>
+            )}
           </div>
         )}
         {filtered.map((pr) => <PRRow key={pr.id} pr={pr} />)}

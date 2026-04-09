@@ -127,6 +127,7 @@ export default function App() {
                   loading={github.loading}
                   onRefresh={github.refresh}
                   projects={allProjects}
+                  activeWorkspace={activeWorkspace}
                 />
               ) : view === "settings" ? (
                 <SettingsPage
