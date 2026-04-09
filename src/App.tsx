@@ -94,6 +94,11 @@ export default function App() {
               {selectedProject ? (
                 <ProjectDetailPage
                   project={selectedProject}
+                  processes={processes}
+                  workspaceId={activeWorkspace?.id ?? ""}
+                  workspaceName={activeWorkspace?.name ?? ""}
+                  onStartProcess={startProcess}
+                  onStopProcess={stopProcess}
                   onBack={() => setSelectedProject(null)}
                   onDeleted={() => { setSelectedProject(null); }}
                 />

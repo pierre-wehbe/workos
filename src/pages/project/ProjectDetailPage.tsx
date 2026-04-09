@@ -1,33 +1,89 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, FolderOpen, GitBranch, Play, Square, Trash2 } from "lucide-react";
-import type { Project } from "../../lib/types";
+import type { ProcessEntry, Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
-import { useProcess } from "../../lib/use-process";
 import { Terminal } from "../../components/Terminal";
 import { ToolsTab } from "./ToolsTab";
 
 interface ProjectDetailPageProps {
   project: Project;
+  processes: ProcessEntry[];
+  workspaceId: string;
+  workspaceName: string;
+  onStartProcess: (data: {
+    projectId: string; projectName: string; workspaceId: string;
+    workspaceName: string; toolName: string; command: string; workingDir?: string;
+  }) => void;
+  onStopProcess: (processId: string) => void;
   onBack: () => void;
   onDeleted: () => void;
 }
 
-export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailPageProps) {
-  const { isRunning, output, exitCode, start, stop } = useProcess(project.id);
+export function ProjectDetailPage({
+  project, processes, workspaceId, workspaceName,
+  onStartProcess, onStopProcess, onBack, onDeleted,
+}: ProjectDetailPageProps) {
   const [branch, setBranch] = useState<string | null>(null);
   const [tab, setTab] = useState<"terminal" | "tools">("terminal");
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  // Find running process for this project
+  const runningProcess = processes.find((p) => p.projectId === project.id && p.status === "running");
+  const lastProcess = processes
+    .filter((p) => p.projectId === project.id)
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0];
 
   useEffect(() => {
     ipc.gitBranch(project.localPath).then(setBranch);
   }, [project.localPath]);
 
-  const handleStart = () => {
-    if (project.devCommand) {
-      start(project.devCommand, project.localPath);
+  // Load logs for the latest process and stream new output
+  useEffect(() => {
+    if (!lastProcess) { setTerminalOutput(""); return; }
+
+    ipc.getProcessLogs(lastProcess.id).then(setTerminalOutput);
+
+    if (lastProcess.status === "running") {
+      const unsub = ipc.onProcessOutput((id, chunk) => {
+        if (id !== lastProcess.id) return;
+        setTerminalOutput((prev) => prev + chunk);
+      });
+      cleanupRef.current = unsub;
+      return () => { unsub(); cleanupRef.current = null; };
     }
+  }, [lastProcess?.id, lastProcess?.status]);
+
+  const handleStart = () => {
+    if (!project.devCommand) return;
+    setTerminalOutput("");
+    onStartProcess({
+      projectId: project.id,
+      projectName: project.name,
+      workspaceId,
+      workspaceName,
+      toolName: project.devCommand,
+      command: project.devCommand,
+      workingDir: project.localPath,
+    });
+  };
+
+  const handleRunTool = (command: string, workingDir: string, toolName: string) => {
+    setTerminalOutput("");
+    const fullPath = workingDir === "." ? project.localPath : `${project.localPath}/${workingDir}`;
+    onStartProcess({
+      projectId: project.id,
+      projectName: project.name,
+      workspaceId,
+      workspaceName,
+      toolName,
+      command,
+      workingDir: fullPath,
+    });
+    setTab("terminal");
   };
 
   const handleDelete = async () => {
@@ -38,6 +94,8 @@ export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailP
     setDeleting(false);
     onDeleted();
   };
+
+  const isRunning = !!runningProcess;
 
   return (
     <div className="h-full flex flex-col">
@@ -66,7 +124,7 @@ export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailP
           <div className="flex items-center gap-2">
             {project.devCommand && (
               isRunning ? (
-                <button type="button" onClick={stop} className="flex items-center gap-2 px-4 h-9 rounded-lg bg-wo-danger text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                <button type="button" onClick={() => onStopProcess(runningProcess!.id)} className="flex items-center gap-2 px-4 h-9 rounded-lg bg-wo-danger text-white text-sm font-medium hover:opacity-90 transition-opacity">
                   <Square size={14} />
                   Stop
                 </button>
@@ -132,18 +190,18 @@ export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailP
       {/* Terminal */}
       {tab === "terminal" && (
         <div className="flex-1 min-h-0 p-6">
-          {output || isRunning ? (
+          {terminalOutput || isRunning ? (
             <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
-              <Terminal output={output} isRunning={isRunning} />
+              <Terminal output={terminalOutput} isRunning={isRunning} />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
               {project.devCommand
                 ? `Press Start to run: ${project.devCommand}`
-                : "No dev command configured for this project."}
-              {exitCode !== null && (
-                <span className={`ml-2 ${exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
-                  (exited with code {exitCode})
+                : "No dev command configured. Add one in project settings or use the Tools tab."}
+              {lastProcess?.exitCode != null && (
+                <span className={`ml-2 ${lastProcess.exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
+                  (exited with code {lastProcess.exitCode})
                 </span>
               )}
             </div>
@@ -152,14 +210,7 @@ export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailP
       )}
 
       {tab === "tools" && (
-        <ToolsTab
-          project={project}
-          onRunTool={(command, workingDir, toolName) => {
-            const fullPath = workingDir === "." ? project.localPath : `${project.localPath}/${workingDir}`;
-            start(command, fullPath);
-            setTab("terminal");
-          }}
-        />
+        <ToolsTab project={project} onRunTool={handleRunTool} />
       )}
 
       {/* Delete confirmation modal */}
