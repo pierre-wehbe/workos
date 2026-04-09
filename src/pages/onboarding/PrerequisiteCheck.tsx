@@ -35,7 +35,7 @@ const PREREQUISITES: Prerequisite[] = [
     id: "ssh",
     name: "SSH Key",
     description: "GitHub authentication",
-    detectCmd: 'test -f ~/.ssh/id_ed25519 && cat ~/.ssh/id_ed25519.pub || test -f ~/.ssh/id_rsa && cat ~/.ssh/id_rsa.pub',
+    detectCmd: 'if [ -f ~/.ssh/id_ed25519.pub ]; then cat ~/.ssh/id_ed25519.pub; elif [ -f ~/.ssh/id_rsa.pub ]; then cat ~/.ssh/id_rsa.pub; else exit 1; fi',
     installCmd: 'ssh-keygen -t ed25519 -C "workos" -f ~/.ssh/id_ed25519 -N ""',
     parseVersion: () => "ed25519",
   },
