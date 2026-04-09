@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { Sidebar } from "./components/Sidebar";
 import { OnboardingPage } from "./pages/onboarding/OnboardingPage";
+import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { useWorkspaces } from "./lib/use-workspaces";
-import type { AppConfig } from "./lib/types";
+import { ipc } from "./lib/ipc";
+import type { AppConfig, Project } from "./lib/types";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
-  const { refresh: refreshWorkspaces } = useWorkspaces();
+  const [view, setView] = useState<"dashboard" | "settings">("dashboard");
+  const { workspaces, activeWorkspace, loading, switchWorkspace, refresh: refreshWorkspaces } = useWorkspaces();
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [runningProcessIds, setRunningProcessIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     window.electronAPI.getConfig().then(setConfig);
@@ -17,6 +23,20 @@ export default function App() {
   const handleOnboardingComplete = () => {
     setConfig({ ...config, setupComplete: true });
     refreshWorkspaces();
+  };
+
+  const handleStartProcess = (project: Project) => {
+    setRunningProcessIds((prev) => new Set(prev).add(project.id));
+    setSelectedProject(project);
+  };
+
+  const handleStopProcess = (projectId: string) => {
+    ipc.cancelCommand(projectId);
+    setRunningProcessIds((prev) => {
+      const next = new Set(prev);
+      next.delete(projectId);
+      return next;
+    });
   };
 
   return (
@@ -32,16 +52,38 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex">
         {!config.setupComplete ? (
           <OnboardingPage onComplete={handleOnboardingComplete} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <h1 className="text-2xl font-semibold">Dashboard</h1>
-              <p className="text-sm text-wo-text-secondary mt-2">Checkpoint 3 complete — onboarding works</p>
-            </div>
-          </div>
+          <>
+            <Sidebar
+              workspaces={workspaces}
+              activeWorkspace={activeWorkspace}
+              onSwitchWorkspace={switchWorkspace}
+              currentView={view}
+              onNavigate={(v) => { setView(v); setSelectedProject(null); }}
+            />
+            <main className="flex-1 overflow-y-auto">
+              {view === "dashboard" && activeWorkspace ? (
+                <DashboardPage
+                  workspace={activeWorkspace}
+                  onOpenProject={setSelectedProject}
+                  runningProcessIds={runningProcessIds}
+                  onStartProcess={handleStartProcess}
+                  onStopProcess={handleStopProcess}
+                />
+              ) : view === "settings" ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-wo-text-secondary">Settings — Checkpoint 6</p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-wo-text-secondary">Select a workspace</p>
+                </div>
+              )}
+            </main>
+          </>
         )}
       </div>
     </div>
