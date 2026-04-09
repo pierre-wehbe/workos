@@ -24,7 +24,7 @@ export function ProjectDetailPage({
   onStartProcess, onStopProcess, onBack, onDeleted,
 }: ProjectDetailPageProps) {
   const [branch, setBranch] = useState<string | null>(null);
-  const [tab, setTab] = useState<"terminal" | "tools">("terminal");
+  const [tab, setTab] = useState<"tools" | "terminal">("tools");
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -165,17 +165,6 @@ export function ProjectDetailPage({
       <div className="shrink-0 flex gap-1 px-6 pt-3 border-b border-wo-border">
         <button
           type="button"
-          onClick={() => setTab("terminal")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-            tab === "terminal"
-              ? "border-wo-accent text-wo-accent"
-              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
-          }`}
-        >
-          Terminal
-        </button>
-        <button
-          type="button"
           onClick={() => setTab("tools")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
             tab === "tools"
@@ -184,6 +173,17 @@ export function ProjectDetailPage({
           }`}
         >
           Tools
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("terminal")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "terminal"
+              ? "border-wo-accent text-wo-accent"
+              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
+          }`}
+        >
+          Terminal
         </button>
       </div>
 

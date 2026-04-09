@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { Terminal as XTerminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -12,7 +13,6 @@ interface TerminalProps {
 }
 
 export function Terminal({ output, isRunning = false, allowFullscreen = true }: TerminalProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const termContainerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -60,7 +60,17 @@ export function Terminal({ output, isRunning = false, allowFullscreen = true }: 
 
   // Re-fit when fullscreen toggles
   useEffect(() => {
-    setTimeout(() => fitRef.current?.fit(), 50);
+    setTimeout(() => fitRef.current?.fit(), 100);
+  }, [fullscreen]);
+
+  // Esc to exit fullscreen
+  useEffect(() => {
+    if (!fullscreen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [fullscreen]);
 
   useEffect(() => {
@@ -74,45 +84,59 @@ export function Terminal({ output, isRunning = false, allowFullscreen = true }: 
     }
   }, [output]);
 
+  const fullscreenOverlay = fullscreen ? createPortal(
+    <div className="fixed inset-0 z-100 bg-[#0f1512] pt-11 flex flex-col">
+      <div className="shrink-0 flex items-center justify-between px-4 h-10 border-b border-wo-border/30">
+        <div className="flex items-center gap-2">
+          {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
+          <span className="text-xs text-[#6b8a7e]">{isRunning ? "Running" : "Stopped"}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setFullscreen(false)}
+          className="p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors"
+          title="Exit fullscreen (Esc)"
+        >
+          <Minimize2 size={14} />
+        </button>
+      </div>
+      {/* This transparent overlay captures the terminal visually — actual xterm stays in original DOM position */}
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div
-      ref={wrapperRef}
-      className={`relative group ${
-        fullscreen
-          ? "fixed inset-0 z-50 bg-[#0f1512] flex flex-col"
-          : "h-full min-h-[120px] rounded-lg bg-wo-bg-subtle"
-      }`}
-    >
-      {fullscreen && (
-        <div className="shrink-0 flex items-center justify-between px-4 h-10 border-b border-wo-border/30">
-          <div className="flex items-center gap-2">
-            {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
-            <span className="text-xs text-wo-text-tertiary">{isRunning ? "Running" : "Stopped"}</span>
-          </div>
+    <>
+      {fullscreenOverlay}
+      <div
+        className={`relative group ${
+          fullscreen
+            ? "fixed inset-0 z-101 pt-21 bg-[#0f1512]"
+            : "h-full min-h-[120px] rounded-lg bg-wo-bg-subtle"
+        }`}
+      >
+        {allowFullscreen && !fullscreen && (
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-wo-bg-elevated/80 text-wo-text-tertiary hover:text-wo-text opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            title="Fullscreen"
+          >
+            <Maximize2 size={12} />
+          </button>
+        )}
+        {fullscreen && (
           <button
             type="button"
             onClick={() => setFullscreen(false)}
-            className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
+            className="absolute top-2 right-2 p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors z-10"
             title="Exit fullscreen (Esc)"
           >
             <Minimize2 size={14} />
           </button>
-        </div>
-      )}
-      {allowFullscreen && !fullscreen && (
-        <button
-          type="button"
-          onClick={() => setFullscreen(true)}
-          className="absolute top-2 right-2 p-1.5 rounded-md bg-wo-bg-elevated/80 text-wo-text-tertiary hover:text-wo-text opacity-0 group-hover:opacity-100 transition-opacity z-10"
-          title="Fullscreen"
-        >
-          <Maximize2 size={12} />
-        </button>
-      )}
-      <div
-        ref={termContainerRef}
-        className={fullscreen ? "flex-1 min-h-0 p-3" : "h-full p-3"}
-      />
-    </div>
+        )}
+        <div ref={termContainerRef} className="h-full p-3" />
+      </div>
+    </>
   );
 }

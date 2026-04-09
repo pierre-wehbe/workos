@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Pin, Play, Plus, Search, Trash2 } from "lucide-react";
 import type { Project } from "../../lib/types";
 import { useTools } from "../../lib/use-tools";
@@ -10,6 +10,11 @@ interface ToolsTabProps {
 
 export function ToolsTab({ project, onRunTool }: ToolsTabProps) {
   const { tools, discovered, discovering, discover, pin, addCustom, remove } = useTools(project.id);
+
+  // Auto-scan on mount
+  useEffect(() => {
+    discover(project.localPath);
+  }, [project.localPath, discover]);
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customCmd, setCustomCmd] = useState("");

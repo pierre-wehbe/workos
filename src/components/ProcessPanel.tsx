@@ -62,7 +62,7 @@ export function ProcessPanel({
   const runningCount = processes.filter((p) => p.status === "running").length;
 
   const panelClass = expanded
-    ? "fixed inset-0 z-50 flex flex-col bg-wo-bg"
+    ? "fixed inset-0 z-50 flex flex-col bg-wo-bg pt-11"
     : "absolute top-full right-0 mt-2 w-[480px] max-h-[600px] flex flex-col rounded-xl bg-wo-bg-elevated border border-wo-border shadow-2xl z-50 overflow-hidden";
 
   return (
