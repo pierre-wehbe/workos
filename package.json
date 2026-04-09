@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "start": "ELECTRON_RUN_AS_NODE= electron desktop/main.js",
+    "postinstall": "electron-rebuild -f -o better-sqlite3",
     "reset": "node -e \"const p=require('path'),f=require('fs'),h=require('os').homedir();f.rmSync(p.join(h,'Library/Application Support/workos'),{recursive:true,force:true});console.log('Reset complete.')\""
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@tailwindcss/vite": "^4.2.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
