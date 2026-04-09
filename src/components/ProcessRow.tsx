@@ -133,6 +133,7 @@ export function ProcessRow({ process: proc, onStop, onClear, showWorkspace = fal
           output={logs}
           isRunning={proc.status === "running"}
           title={`${proc.toolName} — ${proc.projectName}`}
+          processId={proc.id}
           onClose={() => setFullscreen(false)}
         />
       )}

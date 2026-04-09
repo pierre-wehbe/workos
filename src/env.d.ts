@@ -74,6 +74,7 @@ interface ElectronAPI {
   clearAllStopped: () => Promise<void>;
   getProcessLogs: (id: string) => Promise<string>;
   getRunningCount: () => Promise<number>;
+  getProcessEnv: (id: string) => Promise<Record<string, string>>;
   onProcessUpdate: (cb: (entry: import("./lib/types").ProcessEntry) => void) => () => void;
   onProcessOutput: (cb: (id: string, chunk: string) => void) => () => void;
 }

@@ -259,6 +259,7 @@ export function ProjectDetailPage({
           output={terminalOutput}
           isRunning={isRunning}
           title={`${project.name} — ${lastProcess?.toolName ?? project.devCommand ?? "Terminal"}`}
+          processId={lastProcess?.id}
           onClose={() => setTerminalFullscreen(false)}
         />
       )}

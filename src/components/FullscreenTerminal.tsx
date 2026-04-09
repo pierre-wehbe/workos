@@ -1,23 +1,26 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Minimize2 } from "lucide-react";
+import { Minimize2, Variable } from "lucide-react";
 import { Terminal as XTerminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { EnvModal } from "./EnvModal";
 import "@xterm/xterm/css/xterm.css";
 
 interface FullscreenTerminalProps {
   output: string;
   isRunning: boolean;
   title?: string;
+  processId?: string;
   onClose: () => void;
 }
 
-export function FullscreenTerminal({ output, isRunning, title, onClose }: FullscreenTerminalProps) {
+export function FullscreenTerminal({ output, isRunning, title, processId, onClose }: FullscreenTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const lastLengthRef = useRef(0);
+  const [showEnv, setShowEnv] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -44,14 +47,12 @@ export function FullscreenTerminal({ output, isRunning, title, onClose }: Fullsc
     term.loadAddon(webLinks);
     term.open(containerRef.current);
 
-    // Write all existing output
     if (output) term.write(output);
     lastLengthRef.current = output.length;
 
     termRef.current = term;
     fitRef.current = fit;
 
-    // Delay fit to ensure layout is stable
     requestAnimationFrame(() => fit.fit());
 
     const observer = new ResizeObserver(() => fit.fit());
@@ -61,9 +62,8 @@ export function FullscreenTerminal({ output, isRunning, title, onClose }: Fullsc
       observer.disconnect();
       term.dispose();
     };
-  }, []); // Mount once
+  }, []);
 
-  // Stream new content
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
@@ -75,14 +75,13 @@ export function FullscreenTerminal({ output, isRunning, title, onClose }: Fullsc
     }
   }, [output]);
 
-  // Esc to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !showEnv) onClose();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, showEnv]);
 
   return createPortal(
     <div className="fixed inset-0 z-100 bg-[#0f1512] flex flex-col pt-11">
@@ -93,16 +92,33 @@ export function FullscreenTerminal({ output, isRunning, title, onClose }: Fullsc
             {title ?? (isRunning ? "Running" : "Stopped")}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors"
-          title="Exit fullscreen (Esc)"
-        >
-          <Minimize2 size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          {processId && (
+            <button
+              type="button"
+              onClick={() => setShowEnv(true)}
+              className="flex items-center gap-1.5 px-2 h-7 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors text-xs"
+              title="Environment variables"
+            >
+              <Variable size={13} />
+              Env
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors"
+            title="Exit fullscreen (Esc)"
+          >
+            <Minimize2 size={14} />
+          </button>
+        </div>
       </div>
       <div ref={containerRef} className="flex-1 min-h-0 p-3" />
+
+      {showEnv && processId && (
+        <EnvModal processId={processId} onClose={() => setShowEnv(false)} />
+      )}
     </div>,
     document.body
   );

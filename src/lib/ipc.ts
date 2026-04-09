@@ -46,6 +46,7 @@ export const ipc = {
   clearAllStopped: () => api.clearAllStopped(),
   getProcessLogs: (id: string) => api.getProcessLogs(id),
   getRunningCount: () => api.getRunningCount(),
+  getProcessEnv: (id: string) => api.getProcessEnv(id),
   onProcessUpdate: (cb: (entry: import("./types").ProcessEntry) => void) => api.onProcessUpdate(cb),
   onProcessOutput: (cb: (id: string, chunk: string) => void) => api.onProcessOutput(cb),
 } as const;

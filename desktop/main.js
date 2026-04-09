@@ -175,6 +175,7 @@ app.whenReady().then(() => {
   ipcMain.handle("process:clear-all-stopped", () => processes.clearAllStopped());
   ipcMain.handle("process:logs", (_e, id) => processes.getProcessLogs(id));
   ipcMain.handle("process:running-count", () => processes.getRunningCount());
+  ipcMain.handle("process:env", (_e, id) => processes.getProcessEnv(id));
 
   createWindow();
   processes.init(app, mainWindow);

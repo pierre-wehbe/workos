@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearAllStopped: () => ipcRenderer.invoke("process:clear-all-stopped"),
   getProcessLogs: (id) => ipcRenderer.invoke("process:logs", id),
   getRunningCount: () => ipcRenderer.invoke("process:running-count"),
+  getProcessEnv: (id) => ipcRenderer.invoke("process:env", id),
   onProcessUpdate: (cb) => {
     const handler = (_e, d) => cb(d);
     ipcRenderer.on("process:on-update", handler);

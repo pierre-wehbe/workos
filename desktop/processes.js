@@ -61,6 +61,13 @@ function startProcess({ projectId, projectName, workspaceId, workspaceName, tool
   const cwd = workingDir || undefined;
   const child = spawn("/bin/zsh", ["-l", "-c", command], { env, cwd, timeout: 0, detached: true });
 
+  // Store env snapshot (filter out overly long values and internals)
+  const envSnapshot = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (k.startsWith("__") || k.startsWith("BASH_FUNC_") || (v && v.length > 2000)) continue;
+    envSnapshot[k] = v;
+  }
+
   const entry = {
     id,
     projectId,
@@ -76,6 +83,7 @@ function startProcess({ projectId, projectName, workspaceId, workspaceName, tool
     startedAt: new Date().toISOString(),
     stoppedAt: null,
     logFile,
+    envSnapshot,
   };
 
   registry.set(id, entry);
@@ -166,6 +174,12 @@ function getProcessLogs(id) {
   try { return fs.readFileSync(entry.logFile, "utf8"); } catch { return ""; }
 }
 
+function getProcessEnv(id) {
+  const entry = registry.get(id);
+  if (!entry) return {};
+  return entry.envSnapshot || {};
+}
+
 function killAll() {
   for (const entry of registry.values()) {
     if (entry.status === "running" && entry._child) {
@@ -190,11 +204,11 @@ function getRunningCount() {
 }
 
 function toSerializable(entry) {
-  const { _child, ...rest } = entry;
+  const { _child, envSnapshot, ...rest } = entry;
   return rest;
 }
 
 module.exports = {
   init, setWindow, startProcess, stopProcess, clearProcess, clearAllStopped,
-  listProcesses, getProcessLogs, killAll, getRunningCount,
+  listProcesses, getProcessLogs, getProcessEnv, killAll, getRunningCount,
 };
