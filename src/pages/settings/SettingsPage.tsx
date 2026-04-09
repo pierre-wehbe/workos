@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { ArrowUpDown, Database, FolderOpen, Shield } from "lucide-react";
+import { ArrowUpDown, Cpu, Database, FolderOpen, Shield } from "lucide-react";
 import type { Workspace } from "../../lib/types";
 import { PrerequisitePanel } from "./PrerequisitePanel";
+import { MachinePanel } from "./MachinePanel";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { ExportImportPanel } from "./ExportImportPanel";
 import { DataControlPanel } from "./DataControlPanel";
 
 const tabs = [
+  { id: "machine", label: "Machine", icon: Cpu },
   { id: "prerequisites", label: "Prerequisites", icon: Shield },
   { id: "workspaces", label: "Workspaces", icon: FolderOpen },
   { id: "export", label: "Export / Import", icon: ArrowUpDown },
@@ -23,7 +25,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ workspaces, activeWorkspace, onSwitchWorkspace, onRefresh }: SettingsPageProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("prerequisites");
+  const [activeTab, setActiveTab] = useState<TabId>("machine");
 
   return (
     <div className="h-full flex">
@@ -46,6 +48,7 @@ export function SettingsPage({ workspaces, activeWorkspace, onSwitchWorkspace, o
         })}
       </nav>
       <div className="flex-1 overflow-y-auto p-6">
+        {activeTab === "machine" && <MachinePanel />}
         {activeTab === "prerequisites" && <PrerequisitePanel />}
         {activeTab === "workspaces" && (
           <WorkspacePanel workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={onSwitchWorkspace} onRefresh={onRefresh} />

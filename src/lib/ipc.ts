@@ -49,4 +49,6 @@ export const ipc = {
   getProcessEnv: (id: string) => api.getProcessEnv(id),
   onProcessUpdate: (cb: (entry: import("./types").ProcessEntry) => void) => api.onProcessUpdate(cb),
   onProcessOutput: (cb: (id: string, chunk: string) => void) => api.onProcessOutput(cb),
+  scanMachine: () => api.scanMachine(),
+  fixShellConfig: (file: string, line: string) => api.fixShellConfig(file, line),
 } as const;

@@ -65,3 +65,68 @@ export interface ProcessEntry {
   stoppedAt: string | null;
   logFile: string;
 }
+
+export interface MachineInfo {
+  homebrew: {
+    installed: boolean;
+    version: string | null;
+    path: string | null;
+    shellConfigured: boolean;
+    outdatedCount: number;
+  };
+  python: {
+    pyenv: {
+      installed: boolean;
+      version: string | null;
+      shellConfigured: boolean;
+      installedVersions: string[];
+      globalVersion: string | null;
+      latestAvailable: string | null;
+    };
+    poetry: {
+      installed: boolean;
+      version: string | null;
+      path: string | null;
+      shellConfigured: boolean;
+    };
+    systemPython: string | null;
+  };
+  node: {
+    bun: { installed: boolean; version: string | null; path: string | null; latestVersion: string | null };
+    node: { installed: boolean; version: string | null };
+    npm: { installed: boolean; version: string | null };
+    nvm: { installed: boolean };
+  };
+  rust: {
+    rustup: { installed: boolean; version: string | null };
+    rustc: { version: string | null };
+    cargo: { version: string | null };
+    activeToolchain: string | null;
+    installedToolchains: string[];
+    installedTargets: string[];
+    shellConfigured: boolean;
+    updateAvailable: boolean;
+  };
+  android: {
+    studio: { installed: boolean };
+    sdk: { installed: boolean; path: string };
+    shellConfigured: boolean;
+    installedPackages: Array<{ package: string; version: string }>;
+    kotlin: { version: string | null };
+  };
+  swift: {
+    xcode: { installed: boolean; path: string | null; version: string | null };
+    swift: { version: string | null };
+    tools: { swiftformat: string | null; swiftlint: string | null; cocoapods: string | null };
+  };
+  shell: {
+    zshrcExists: boolean;
+    zprofileExists: boolean;
+    issues: Array<{
+      file: string;
+      label: string;
+      configured: boolean;
+      fix: string;
+    }>;
+  };
+}

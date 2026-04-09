@@ -167,6 +167,11 @@ app.whenReady().then(() => {
   ipcMain.handle("db:delete-tool", (_e, id) => db.deleteTool(id));
   ipcMain.handle("db:update-tool", (_e, id, data) => db.updateTool(id, data));
 
+  // --- Machine ---
+  const machine = require("./machine.js");
+  ipcMain.handle("machine:scan", () => machine.scanMachine());
+  ipcMain.handle("machine:fix-shell", (_e, file, line) => machine.fixShellConfig(file, line));
+
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));
   ipcMain.handle("process:stop", (_e, id) => processes.stopProcess(id));

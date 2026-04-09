@@ -63,6 +63,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   updateTool: (id, data) => ipcRenderer.invoke("db:update-tool", id, data),
   discoverScripts: (projectPath) => ipcRenderer.invoke("shell:discover-scripts", projectPath),
 
+  // Machine
+  scanMachine: () => ipcRenderer.invoke("machine:scan"),
+  fixShellConfig: (file, line) => ipcRenderer.invoke("machine:fix-shell", file, line),
+
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),
   stopProcess: (id) => ipcRenderer.invoke("process:stop", id),

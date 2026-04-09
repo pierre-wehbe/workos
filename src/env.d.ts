@@ -77,6 +77,10 @@ interface ElectronAPI {
   getProcessEnv: (id: string) => Promise<Record<string, string>>;
   onProcessUpdate: (cb: (entry: import("./lib/types").ProcessEntry) => void) => () => void;
   onProcessOutput: (cb: (id: string, chunk: string) => void) => () => void;
+
+  // Machine
+  scanMachine: () => Promise<import("./lib/types").MachineInfo>;
+  fixShellConfig: (file: string, line: string) => Promise<{ ok: boolean; message: string }>;
 }
 
 declare global {
