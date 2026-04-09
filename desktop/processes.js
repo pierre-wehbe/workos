@@ -59,7 +59,7 @@ function startProcess({ projectId, projectName, workspaceId, workspaceName, tool
   const logFile = path.join(logsDir, `${id}.log`);
   const env = loadShellEnvironment();
   const cwd = workingDir || undefined;
-  const child = spawn("/bin/zsh", ["-l", "-c", command], { env, cwd, timeout: 0 });
+  const child = spawn("/bin/zsh", ["-l", "-c", command], { env, cwd, timeout: 0, detached: true });
 
   const entry = {
     id,
@@ -125,12 +125,19 @@ function stopProcess(id) {
   const entry = registry.get(id);
   if (!entry || entry.status !== "running" || !entry._child) return;
 
-  entry._child.kill("SIGTERM");
+  const pid = entry._child.pid;
+  // Kill entire process group
+  try { process.kill(-pid, "SIGTERM"); } catch { entry._child.kill("SIGTERM"); }
   setTimeout(() => {
-    if (entry.status === "running" && entry._child) {
-      entry._child.kill("SIGKILL");
+    if (entry.status === "running") {
+      try { process.kill(-pid, "SIGKILL"); } catch {}
+      // Force update if close event didn't fire
+      entry.status = "stopped";
+      entry.exitCode = -1;
+      entry.stoppedAt = new Date().toISOString();
+      if (mainWindow) mainWindow.webContents.send("process:on-update", toSerializable(entry));
     }
-  }, 5000);
+  }, 3000);
 }
 
 function clearProcess(id) {

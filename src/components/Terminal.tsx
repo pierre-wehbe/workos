@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Terminal as XTerminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -9,15 +7,13 @@ import "@xterm/xterm/css/xterm.css";
 interface TerminalProps {
   output: string;
   isRunning?: boolean;
-  allowFullscreen?: boolean;
 }
 
-export function Terminal({ output, isRunning = false, allowFullscreen = true }: TerminalProps) {
+export function Terminal({ output, isRunning = false }: TerminalProps) {
   const termContainerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const lastLengthRef = useRef(0);
-  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     if (!termContainerRef.current) return;
@@ -58,21 +54,6 @@ export function Terminal({ output, isRunning = false, allowFullscreen = true }: 
     };
   }, []);
 
-  // Re-fit when fullscreen toggles
-  useEffect(() => {
-    setTimeout(() => fitRef.current?.fit(), 100);
-  }, [fullscreen]);
-
-  // Esc to exit fullscreen
-  useEffect(() => {
-    if (!fullscreen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullscreen(false);
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [fullscreen]);
-
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
@@ -84,59 +65,9 @@ export function Terminal({ output, isRunning = false, allowFullscreen = true }: 
     }
   }, [output]);
 
-  const fullscreenOverlay = fullscreen ? createPortal(
-    <div className="fixed inset-0 z-100 bg-[#0f1512] pt-11 flex flex-col">
-      <div className="shrink-0 flex items-center justify-between px-4 h-10 border-b border-wo-border/30">
-        <div className="flex items-center gap-2">
-          {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
-          <span className="text-xs text-[#6b8a7e]">{isRunning ? "Running" : "Stopped"}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFullscreen(false)}
-          className="p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors"
-          title="Exit fullscreen (Esc)"
-        >
-          <Minimize2 size={14} />
-        </button>
-      </div>
-      {/* This transparent overlay captures the terminal visually — actual xterm stays in original DOM position */}
-    </div>,
-    document.body
-  ) : null;
-
   return (
-    <>
-      {fullscreenOverlay}
-      <div
-        className={`relative group ${
-          fullscreen
-            ? "fixed inset-0 z-101 pt-21 bg-[#0f1512]"
-            : "h-full min-h-[120px] rounded-lg bg-wo-bg-subtle"
-        }`}
-      >
-        {allowFullscreen && !fullscreen && (
-          <button
-            type="button"
-            onClick={() => setFullscreen(true)}
-            className="absolute top-2 right-2 p-1.5 rounded-md bg-wo-bg-elevated/80 text-wo-text-tertiary hover:text-wo-text opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            title="Fullscreen"
-          >
-            <Maximize2 size={12} />
-          </button>
-        )}
-        {fullscreen && (
-          <button
-            type="button"
-            onClick={() => setFullscreen(false)}
-            className="absolute top-2 right-2 p-1.5 rounded-md text-[#6b8a7e] hover:text-[#e0ede7] hover:bg-[#1c2622] transition-colors z-10"
-            title="Exit fullscreen (Esc)"
-          >
-            <Minimize2 size={14} />
-          </button>
-        )}
-        <div ref={termContainerRef} className="h-full p-3" />
-      </div>
-    </>
+    <div className="h-full min-h-[120px] rounded-lg bg-wo-bg-subtle">
+      <div ref={termContainerRef} className="h-full p-3" />
+    </div>
   );
 }

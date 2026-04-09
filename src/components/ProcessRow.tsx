@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Circle, Loader2, Square, Trash2, ChevronDown, ChevronRight, Globe } from "lucide-react";
+import { Circle, Loader2, Maximize2, Square, Trash2, ChevronDown, ChevronRight, Globe } from "lucide-react";
 import type { ProcessEntry } from "../lib/types";
 import { Terminal } from "./Terminal";
+import { FullscreenTerminal } from "./FullscreenTerminal";
 import { ipc } from "../lib/ipc";
 
 interface ProcessRowProps {
@@ -24,6 +25,7 @@ function formatDuration(startedAt: string, stoppedAt: string | null): string {
 
 export function ProcessRow({ process: proc, onStop, onClear, showWorkspace = false }: ProcessRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [logs, setLogs] = useState("");
   const [duration, setDuration] = useState(formatDuration(proc.startedAt, proc.stoppedAt));
 
@@ -109,9 +111,30 @@ export function ProcessRow({ process: proc, onStop, onClear, showWorkspace = fal
       </div>
 
       {expanded && (
-        <div className="border-t border-wo-border h-[200px]">
-          <Terminal output={logs} isRunning={proc.status === "running"} />
+        <div className="border-t border-wo-border">
+          <div className="flex justify-end px-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setFullscreen(true)}
+              className="p-1 rounded text-wo-text-tertiary hover:text-wo-text transition-colors"
+              title="Fullscreen"
+            >
+              <Maximize2 size={11} />
+            </button>
+          </div>
+          <div className="h-[200px]">
+            <Terminal output={logs} isRunning={proc.status === "running"} />
+          </div>
         </div>
+      )}
+
+      {fullscreen && (
+        <FullscreenTerminal
+          output={logs}
+          isRunning={proc.status === "running"}
+          title={`${proc.toolName} — ${proc.projectName}`}
+          onClose={() => setFullscreen(false)}
+        />
       )}
     </div>
   );

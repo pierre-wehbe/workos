@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, FolderOpen, GitBranch, Play, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, FolderOpen, GitBranch, Maximize2, Play, RotateCw, Square, Trash2 } from "lucide-react";
 import type { ProcessEntry, Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 import { Terminal } from "../../components/Terminal";
+import { FullscreenTerminal } from "../../components/FullscreenTerminal";
 import { ToolsTab } from "./ToolsTab";
 
 interface ProjectDetailPageProps {
@@ -29,6 +30,7 @@ export function ProjectDetailPage({
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState("");
+  const [terminalFullscreen, setTerminalFullscreen] = useState(false);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   // Find running process for this project
@@ -189,28 +191,76 @@ export function ProjectDetailPage({
 
       {/* Terminal */}
       {tab === "terminal" && (
-        <div className="flex-1 min-h-0 p-6">
-          {terminalOutput || isRunning ? (
-            <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
-              <Terminal output={terminalOutput} isRunning={isRunning} />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
-              {project.devCommand
-                ? `Press Start to run: ${project.devCommand}`
-                : "No dev command configured. Add one in project settings or use the Tools tab."}
-              {lastProcess?.exitCode != null && (
-                <span className={`ml-2 ${lastProcess.exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
-                  (exited with code {lastProcess.exitCode})
+        <div className="flex-1 min-h-0 flex flex-col">
+          {/* Terminal toolbar */}
+          <div className="shrink-0 flex items-center justify-between px-6 py-2">
+            <div className="flex items-center gap-2">
+              {isRunning ? (
+                <button
+                  type="button"
+                  onClick={() => onStopProcess(runningProcess!.id)}
+                  className="flex items-center gap-1.5 px-3 h-7 rounded-md bg-wo-danger text-white text-xs font-medium hover:opacity-90 transition-opacity"
+                >
+                  <Square size={11} />
+                  Stop
+                </button>
+              ) : project.devCommand ? (
+                <button
+                  type="button"
+                  onClick={handleStart}
+                  className="flex items-center gap-1.5 px-3 h-7 rounded-md bg-wo-success text-white text-xs font-medium hover:opacity-90 transition-opacity"
+                >
+                  <RotateCw size={11} />
+                  {terminalOutput ? "Restart" : "Start"}
+                </button>
+              ) : null}
+              {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
+              {!isRunning && lastProcess?.exitCode != null && (
+                <span className={`text-xs ${lastProcess.exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
+                  Exited with code {lastProcess.exitCode}
                 </span>
               )}
             </div>
-          )}
+            {terminalOutput && (
+              <button
+                type="button"
+                onClick={() => setTerminalFullscreen(true)}
+                className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
+                title="Fullscreen"
+              >
+                <Maximize2 size={13} />
+              </button>
+            )}
+          </div>
+          {/* Terminal content */}
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            {terminalOutput || isRunning ? (
+              <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
+                <Terminal output={terminalOutput} isRunning={isRunning} />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
+                {project.devCommand
+                  ? `Press Start to run: ${project.devCommand}`
+                  : "No dev command configured. Add one in project settings or use the Tools tab."}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {tab === "tools" && (
         <ToolsTab project={project} onRunTool={handleRunTool} />
+      )}
+
+      {/* Fullscreen terminal */}
+      {terminalFullscreen && (
+        <FullscreenTerminal
+          output={terminalOutput}
+          isRunning={isRunning}
+          title={`${project.name} — ${lastProcess?.toolName ?? project.devCommand ?? "Terminal"}`}
+          onClose={() => setTerminalFullscreen(false)}
+        />
       )}
 
       {/* Delete confirmation modal */}
