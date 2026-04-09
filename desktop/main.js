@@ -1,9 +1,12 @@
-const { BrowserWindow, app, ipcMain, nativeTheme, session } = require("electron");
+const { BrowserWindow, app, dialog, ipcMain, nativeTheme, session } = require("electron");
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 const { loadShellEnvironment } = require("./shell-env.js");
+const db = require("./db.js");
+const { runSync, runStreaming, cancelProcess, killAll } = require("./executor.js");
+const { checkForUpdate } = require("./updater.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
-
 let mainWindow = null;
 
 function createWindow() {
@@ -30,24 +33,57 @@ function createWindow() {
 
 app.whenReady().then(() => {
   loadShellEnvironment();
+  db.init(app);
+  checkForUpdate(app, session, db);
 
+  // --- App ---
   ipcMain.handle("app:get-config", () => ({
-    setupComplete: false,
-    activeWorkspaceId: null,
+    setupComplete: db.getSetupComplete(),
+    activeWorkspaceId: db.getMeta("active_workspace_id"),
     appVersion: app.getVersion(),
   }));
 
-  ipcMain.handle("theme:set", (_event, mode) => {
-    nativeTheme.themeSource = mode;
+  ipcMain.handle("app:open-in-ide", (_e, targetPath, ide) => {
+    const cmd = ide === "xcode" ? "open" : ide === "vscode" ? "code" : "cursor";
+    const args = ide === "xcode" ? ["-a", "Xcode", targetPath] : [targetPath];
+    spawn(cmd, args, { env: loadShellEnvironment(), detached: true, stdio: "ignore" }).unref();
   });
+
+  ipcMain.handle("app:open-in-finder", (_e, targetPath) => {
+    spawn("open", [targetPath], { detached: true, stdio: "ignore" }).unref();
+  });
+
+  // --- Theme ---
+  ipcMain.handle("theme:set", (_e, mode) => { nativeTheme.themeSource = mode; });
+
+  // --- Shell ---
+  ipcMain.handle("shell:run-sync", (_e, cmd) => runSync(cmd));
+  ipcMain.handle("shell:select-directory", async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory", "createDirectory"] });
+    return result.canceled ? null : result.filePaths[0];
+  });
+  ipcMain.on("shell:run-streaming", (_e, { id, cmd }) => { if (mainWindow) runStreaming(id, cmd, mainWindow); });
+  ipcMain.on("shell:cancel", (_e, { id }) => { cancelProcess(id); });
+
+  // --- Database ---
+  ipcMain.handle("db:get-workspaces", () => db.getWorkspaces());
+  ipcMain.handle("db:create-workspace", (_e, data) => db.createWorkspace(data));
+  ipcMain.handle("db:delete-workspace", (_e, id) => db.deleteWorkspace(id));
+  ipcMain.handle("db:get-active-workspace", () => db.getActiveWorkspace());
+  ipcMain.handle("db:set-active-workspace", (_e, id) => db.setActiveWorkspace(id));
+  ipcMain.handle("db:get-projects", (_e, wsId) => db.getProjects(wsId));
+  ipcMain.handle("db:create-project", (_e, data) => db.createProject(data));
+  ipcMain.handle("db:update-project", (_e, id, data) => db.updateProject(id, data));
+  ipcMain.handle("db:delete-project", (_e, id) => db.deleteProject(id));
+  ipcMain.handle("db:get-project", (_e, id) => db.getProjectById(id));
+  ipcMain.handle("db:set-setup-complete", (_e, val) => db.setSetupComplete(val));
+  ipcMain.handle("db:export-config", () => db.exportConfig());
+  ipcMain.handle("db:import-config", (_e, json) => db.importConfig(json));
 
   createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+app.on("before-quit", () => { killAll(); });
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
