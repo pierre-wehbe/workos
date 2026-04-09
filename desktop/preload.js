@@ -57,4 +57,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setSetupComplete: (val) => ipcRenderer.invoke("db:set-setup-complete", val),
   exportConfig: () => ipcRenderer.invoke("db:export-config"),
   importConfig: (json) => ipcRenderer.invoke("db:import-config", json),
+  getTools: (projectId) => ipcRenderer.invoke("db:get-tools", projectId),
+  createTool: (data) => ipcRenderer.invoke("db:create-tool", data),
+  deleteTool: (id) => ipcRenderer.invoke("db:delete-tool", id),
+  updateTool: (id, data) => ipcRenderer.invoke("db:update-tool", id, data),
+  discoverScripts: (projectPath) => ipcRenderer.invoke("shell:discover-scripts", projectPath),
 });

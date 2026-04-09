@@ -34,4 +34,9 @@ export const ipc = {
   setSetupComplete: (val: boolean) => api.setSetupComplete(val),
   exportConfig: () => api.exportConfig(),
   importConfig: (json: string) => api.importConfig(json),
+  getTools: (projectId: string) => api.getTools(projectId),
+  createTool: (data: Parameters<typeof api.createTool>[0]) => api.createTool(data),
+  deleteTool: (id: string) => api.deleteTool(id),
+  updateTool: (id: string, data: Parameters<typeof api.updateTool>[1]) => api.updateTool(id, data),
+  discoverScripts: (projectPath: string) => api.discoverScripts(projectPath),
 } as const;

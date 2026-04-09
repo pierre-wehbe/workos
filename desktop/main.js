@@ -154,6 +154,18 @@ app.whenReady().then(() => {
   ipcMain.handle("db:export-config", () => db.exportConfig());
   ipcMain.handle("db:import-config", (_e, json) => db.importConfig(json));
 
+  // --- Discovery ---
+  ipcMain.handle("shell:discover-scripts", (_e, projectPath) => {
+    const { discoverScripts } = require("./discovery.js");
+    return discoverScripts(projectPath);
+  });
+
+  // --- Tools ---
+  ipcMain.handle("db:get-tools", (_e, projectId) => db.getTools(projectId));
+  ipcMain.handle("db:create-tool", (_e, data) => db.createTool(data));
+  ipcMain.handle("db:delete-tool", (_e, id) => db.deleteTool(id));
+  ipcMain.handle("db:update-tool", (_e, id, data) => db.updateTool(id, data));
+
   createWindow();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });

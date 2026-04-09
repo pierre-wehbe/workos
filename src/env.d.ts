@@ -51,6 +51,17 @@ interface ElectronAPI {
   setSetupComplete: (val: boolean) => Promise<void>;
   exportConfig: () => Promise<string>;
   importConfig: (json: string) => Promise<void>;
+  getTools: (projectId: string) => Promise<import("./lib/types").Tool[]>;
+  createTool: (data: {
+    projectId: string; name: string; command: string;
+    workingDir?: string; source?: string; sourceKey?: string;
+  }) => Promise<import("./lib/types").Tool>;
+  deleteTool: (id: string) => Promise<void>;
+  updateTool: (id: string, data: Partial<import("./lib/types").Tool>) => Promise<import("./lib/types").Tool>;
+  discoverScripts: (projectPath: string) => Promise<Array<{
+    name: string; command: string | null; workingDir: string;
+    source: string; sourceKey: string;
+  }>>;
 }
 
 declare global {

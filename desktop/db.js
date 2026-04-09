@@ -44,6 +44,17 @@ function init(app) {
       bootstrap_command TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS tools (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      command TEXT NOT NULL,
+      working_dir TEXT DEFAULT '.',
+      source TEXT NOT NULL DEFAULT 'custom',
+      source_key TEXT,
+      pinned INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -162,6 +173,53 @@ function deleteProject(id) {
   db.prepare("DELETE FROM projects WHERE id = ?").run(id);
 }
 
+// Tools
+function rowToTool(row) {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    command: row.command,
+    workingDir: row.working_dir,
+    source: row.source,
+    sourceKey: row.source_key,
+    pinned: row.pinned === 1,
+    createdAt: row.created_at,
+  };
+}
+
+function getTools(projectId) {
+  return db.prepare("SELECT * FROM tools WHERE project_id = ? ORDER BY pinned DESC, name").all(projectId).map(rowToTool);
+}
+
+function createTool({ projectId, name, command, workingDir, source, sourceKey }) {
+  const id = uuid();
+  db.prepare(
+    "INSERT INTO tools (id, project_id, name, command, working_dir, source, source_key, pinned) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
+  ).run(id, projectId, name, command, workingDir || ".", source || "custom", sourceKey || null);
+  return rowToTool(db.prepare("SELECT * FROM tools WHERE id = ?").get(id));
+}
+
+function deleteTool(id) {
+  db.prepare("DELETE FROM tools WHERE id = ?").run(id);
+}
+
+function updateTool(id, fields) {
+  const colMap = { name: "name", command: "command", workingDir: "working_dir", pinned: "pinned" };
+  const sets = [];
+  const values = [];
+  for (const [key, col] of Object.entries(colMap)) {
+    if (key in fields) {
+      sets.push(`${col} = ?`);
+      values.push(key === "pinned" ? (fields[key] ? 1 : 0) : fields[key]);
+    }
+  }
+  if (sets.length === 0) return;
+  values.push(id);
+  db.prepare(`UPDATE tools SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+  return rowToTool(db.prepare("SELECT * FROM tools WHERE id = ?").get(id));
+}
+
 // Export / Import
 function exportConfig() {
   const home = os.homedir();
@@ -207,4 +265,5 @@ module.exports = {
   getWorkspaces, createWorkspace, deleteWorkspace, getActiveWorkspace, setActiveWorkspace,
   getProjects, createProject, updateProject, getProjectById, deleteProject,
   exportConfig, importConfig,
+  getTools, createTool, deleteTool, updateTool,
 };

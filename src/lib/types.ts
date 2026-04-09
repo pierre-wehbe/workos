@@ -35,3 +35,15 @@ export interface PrerequisiteResult {
 }
 
 export type ThemeMode = "light" | "dark" | "system";
+
+export interface Tool {
+  id: string;
+  projectId: string;
+  name: string;
+  command: string;
+  workingDir: string;
+  source: string;
+  sourceKey: string | null;
+  pinned: boolean;
+  createdAt: string;
+}
