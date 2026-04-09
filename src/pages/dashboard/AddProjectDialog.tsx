@@ -27,8 +27,10 @@ export function AddProjectDialog({ workspaceId, workspacePath, onCreated, onClos
     ipc.isGitRepo(workspacePath).then(setWsIsRepo);
   }, [workspacePath]);
 
+  const pathMatchesWorkspace = mode === "existing" && localPath.trim() === workspacePath;
+
   const isValid = (() => {
-    if (mode === "existing") return name.trim() && localPath.trim();
+    if (mode === "existing") return name.trim() && localPath.trim() && !pathMatchesWorkspace;
     if (mode === "create") return name.trim();
     if (mode === "clone") return name.trim() && repoUrl.trim();
     return false;
@@ -135,6 +137,9 @@ export function AddProjectDialog({ workspaceId, workspacePath, onCreated, onClos
                   <FolderOpen size={16} />
                 </button>
               </div>
+              {pathMatchesWorkspace && (
+                <p className="text-xs text-wo-danger mt-1">Project path cannot be the same as the workspace root.</p>
+              )}
             </div>
           )}
 
