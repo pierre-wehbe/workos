@@ -174,21 +174,41 @@ export function MachinePanel() {
       {/* AI CLIs */}
       <Section title="AI Coding Assistants" icon={TerminalIcon}>
         {[
-          { key: "claude" as const, name: "Claude Code", install: "npm install -g @anthropic-ai/claude-code" },
-          { key: "codex" as const, name: "Codex CLI", install: "npm install -g @openai/codex" },
-          { key: "gemini" as const, name: "Gemini CLI", install: "npm install -g @anthropic-ai/gemini-cli || echo 'Check https://ai.google.dev/gemini-api/docs/cli for install instructions'" },
-        ].map(({ key, name, install }) => (
-          <div key={key} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-wo-bg-subtle">
-            <div className="flex items-center gap-2 min-w-0">
-              <Badge ok={info.ai[key].installed} label={info.ai[key].installed ? "Installed" : "Missing"} />
-              <span className="text-xs font-medium">{name}</span>
-              <VersionTag version={info.ai[key].version} />
+          { key: "claude" as const, name: "Claude Code", install: "npm install -g @anthropic-ai/claude-code", update: "npm update -g @anthropic-ai/claude-code", login: "claude auth login" },
+          { key: "codex" as const, name: "Codex CLI", install: "npm install -g @openai/codex", update: "npm update -g @openai/codex", login: "codex auth login" },
+          { key: "gemini" as const, name: "Gemini CLI", install: "npm install -g @google/gemini-cli", update: "npm update -g @google/gemini-cli", login: "gemini auth login" },
+        ].map(({ key, name, install, update, login }) => {
+          const tool = info.ai[key];
+          const hasUpdate = tool.installed && tool.latestVersion && tool.version && tool.latestVersion !== tool.version && !tool.version.includes(tool.latestVersion);
+          return (
+            <div key={key} className="px-3 py-2.5 rounded-lg bg-wo-bg-subtle space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <Badge ok={tool.installed} label={tool.installed ? "Installed" : "Missing"} />
+                  <span className="text-xs font-medium">{name}</span>
+                  <VersionTag version={tool.version} />
+                  {tool.installed && (
+                    <Badge ok={tool.authenticated} label={tool.authenticated ? "Logged in" : "Not logged in"} />
+                  )}
+                  {hasUpdate && (
+                    <span className="text-[10px] text-wo-warning font-medium">Update: {tool.latestVersion}</span>
+                  )}
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  {!tool.installed && (
+                    <ActionButton label="Install" variant="accent" onClick={() => runCommand(install, `Installing ${name}`)} />
+                  )}
+                  {hasUpdate && (
+                    <ActionButton label="Update" onClick={() => runCommand(update, `Updating ${name}`)} />
+                  )}
+                  {tool.installed && !tool.authenticated && (
+                    <ActionButton label="Login" onClick={() => runCommand(login, `Logging into ${name}`)} />
+                  )}
+                </div>
+              </div>
             </div>
-            {!info.ai[key].installed && (
-              <ActionButton label="Install" variant="accent" onClick={() => runCommand(install, `Installing ${name}`)} />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </Section>
 
       {/* Python */}

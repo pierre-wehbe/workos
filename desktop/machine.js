@@ -256,10 +256,31 @@ async function detectAICLIs() {
     run("gemini --version 2>/dev/null"),
   ]);
 
+  // Check auth status
+  const [claudeAuth, codexAuth, geminiAuth] = await Promise.all([
+    claudeRaw ? run("claude auth status 2>&1") : Promise.resolve(null),
+    codexRaw ? run("codex auth status 2>&1") : Promise.resolve(null),
+    geminiRaw ? run("gemini auth status 2>&1") : Promise.resolve(null),
+  ]);
+
+  // Check latest versions via npm
+  const [claudeLatest, codexLatest, geminiLatest] = await Promise.all([
+    claudeRaw ? run("npm view @anthropic-ai/claude-code version 2>/dev/null") : Promise.resolve(null),
+    codexRaw ? run("npm view @openai/codex version 2>/dev/null") : Promise.resolve(null),
+    geminiRaw ? run("npm view @anthropic-ai/gemini-cli version 2>/dev/null || npm view @google/gemini-cli version 2>/dev/null") : Promise.resolve(null),
+  ]);
+
+  function parseAuth(raw) {
+    if (!raw) return false;
+    const lower = raw.toLowerCase();
+    // Consider authenticated if output doesn't contain error/not-logged-in indicators
+    return !lower.includes("not logged") && !lower.includes("not authenticated") && !lower.includes("no api key") && !lower.includes("error") && !lower.includes("usage:");
+  }
+
   return {
-    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null },
-    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null },
-    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null },
+    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: claudeLatest ?? null, authenticated: parseAuth(claudeAuth) },
+    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: codexLatest ?? null, authenticated: parseAuth(codexAuth) },
+    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: geminiLatest ?? null, authenticated: parseAuth(geminiAuth) },
   };
 }
 
