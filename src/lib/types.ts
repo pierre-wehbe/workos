@@ -119,6 +119,11 @@ export interface MachineInfo {
     swift: { version: string | null };
     tools: { swiftformat: string | null; swiftlint: string | null; cocoapods: string | null };
   };
+  ai: {
+    claude: { installed: boolean; version: string | null };
+    codex: { installed: boolean; version: string | null };
+    gemini: { installed: boolean; version: string | null };
+  };
   shell: {
     zshrcExists: boolean;
     zprofileExists: boolean;

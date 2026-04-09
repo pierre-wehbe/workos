@@ -247,19 +247,36 @@ function auditShellConfig() {
   };
 }
 
+// ─── AI CLIs ───
+
+async function detectAICLIs() {
+  const [claudeRaw, codexRaw, geminiRaw] = await Promise.all([
+    run("claude --version 2>/dev/null"),
+    run("codex --version 2>/dev/null"),
+    run("gemini --version 2>/dev/null"),
+  ]);
+
+  return {
+    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null },
+    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null },
+    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null },
+  };
+}
+
 // ─── Full Scan (async, parallel) ───
 
 async function scanMachine() {
-  const [homebrew, python, node, rust, android, swift] = await Promise.all([
+  const [homebrew, python, node, rust, android, swift, ai] = await Promise.all([
     detectHomebrew(),
     detectPython(),
     detectNode(),
     detectRust(),
     detectAndroid(),
     detectSwift(),
+    detectAICLIs(),
   ]);
 
-  return { homebrew, python, node, rust, android, swift, shell: auditShellConfig() };
+  return { homebrew, python, node, rust, android, swift, ai, shell: auditShellConfig() };
 }
 
 function fixShellConfig(file, line) {

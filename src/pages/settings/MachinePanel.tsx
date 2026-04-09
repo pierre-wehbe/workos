@@ -171,6 +171,26 @@ export function MachinePanel() {
         )}
       </Section>
 
+      {/* AI CLIs */}
+      <Section title="AI Coding Assistants" icon={TerminalIcon}>
+        {[
+          { key: "claude" as const, name: "Claude Code", install: "npm install -g @anthropic-ai/claude-code" },
+          { key: "codex" as const, name: "Codex CLI", install: "npm install -g @openai/codex" },
+          { key: "gemini" as const, name: "Gemini CLI", install: "npm install -g @anthropic-ai/gemini-cli || echo 'Check https://ai.google.dev/gemini-api/docs/cli for install instructions'" },
+        ].map(({ key, name, install }) => (
+          <div key={key} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-wo-bg-subtle">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge ok={info.ai[key].installed} label={info.ai[key].installed ? "Installed" : "Missing"} />
+              <span className="text-xs font-medium">{name}</span>
+              <VersionTag version={info.ai[key].version} />
+            </div>
+            {!info.ai[key].installed && (
+              <ActionButton label="Install" variant="accent" onClick={() => runCommand(install, `Installing ${name}`)} />
+            )}
+          </div>
+        ))}
+      </Section>
+
       {/* Python */}
       <Section title="Python" icon={TerminalIcon}>
         {/* pyenv */}

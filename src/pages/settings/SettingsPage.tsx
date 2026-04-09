@@ -8,9 +8,9 @@ import { ExportImportPanel } from "./ExportImportPanel";
 import { DataControlPanel } from "./DataControlPanel";
 
 const tabs = [
+  { id: "workspaces", label: "Workspaces", icon: FolderOpen },
   { id: "machine", label: "Machine", icon: Cpu },
   { id: "prerequisites", label: "Prerequisites", icon: Shield },
-  { id: "workspaces", label: "Workspaces", icon: FolderOpen },
   { id: "export", label: "Export / Import", icon: ArrowUpDown },
   { id: "data", label: "Data Control", icon: Database },
 ] as const;
@@ -25,7 +25,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ workspaces, activeWorkspace, onSwitchWorkspace, onRefresh }: SettingsPageProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("machine");
+  const [activeTab, setActiveTab] = useState<TabId>("workspaces");
 
   return (
     <div className="h-full flex">
