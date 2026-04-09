@@ -53,4 +53,5 @@ export const ipc = {
   fixShellConfig: (file: string, line: string) => api.fixShellConfig(file, line),
   checkBrewOutdated: () => api.checkBrewOutdated(),
   setPyenvGlobal: (version: string) => api.setPyenvGlobal(version),
+  checkMachineUpdates: () => api.checkMachineUpdates(),
 } as const;

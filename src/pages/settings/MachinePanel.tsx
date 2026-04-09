@@ -69,10 +69,9 @@ function ActionButton({ label, onClick, loading, variant = "default" }: {
 export function MachinePanel() {
   const [info, setInfo] = useState<MachineInfo | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [runningCmd, setRunningCmd] = useState<string | null>(null);
   const [cmdOutput, setCmdOutput] = useState("");
-  const [brewOutdated, setBrewOutdated] = useState<number | null>(null);
-  const [checkingBrew, setCheckingBrew] = useState(false);
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -83,13 +82,34 @@ export function MachinePanel() {
 
   useEffect(() => { scan(); }, [scan]);
 
+  const checkUpdates = useCallback(async () => {
+    if (!info) return;
+    setCheckingUpdates(true);
+    const updates = await ipc.checkMachineUpdates();
+    setInfo((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        homebrew: { ...prev.homebrew, outdatedCount: updates.brewOutdatedCount },
+        rust: { ...prev.rust, updateAvailable: updates.rustUpdateAvailable },
+        python: { ...prev.python, pyenv: { ...prev.python.pyenv, latestAvailable: updates.pyenvLatestAvailable } },
+        ai: {
+          claude: { ...prev.ai.claude, ...updates.ai.claude },
+          codex: { ...prev.ai.codex, ...updates.ai.codex },
+          gemini: { ...prev.ai.gemini, ...updates.ai.gemini },
+        },
+      };
+    });
+    setCheckingUpdates(false);
+  }, [info]);
+
   const runCommand = async (cmd: string, label: string) => {
     setRunningCmd(label);
     setCmdOutput("");
     const result = await ipc.runSync(cmd);
     setCmdOutput(result.stdout + (result.stderr ? "\n" + result.stderr : ""));
     setRunningCmd(null);
-    await scan(); // Refresh after install
+    await scan();
   };
 
   const fixShell = async (file: string, line: string) => {
@@ -110,15 +130,26 @@ export function MachinePanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">Machine Configuration</h3>
-        <button
-          type="button"
-          onClick={scan}
-          disabled={scanning}
-          className="flex items-center gap-1.5 px-3 h-7 rounded-md border border-wo-border text-xs font-medium text-wo-text hover:bg-wo-bg-subtle transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={11} className={scanning ? "animate-spin" : ""} />
-          {scanning ? "Scanning..." : "Rescan"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={checkUpdates}
+            disabled={checkingUpdates}
+            className="flex items-center gap-1.5 px-3 h-7 rounded-md bg-wo-accent text-white text-xs font-medium hover:bg-wo-accent-hover transition-colors disabled:opacity-50"
+          >
+            {checkingUpdates ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+            {checkingUpdates ? "Checking..." : "Check for updates"}
+          </button>
+          <button
+            type="button"
+            onClick={scan}
+            disabled={scanning}
+            className="flex items-center gap-1.5 px-3 h-7 rounded-md border border-wo-border text-xs font-medium text-wo-text hover:bg-wo-bg-subtle transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={11} className={scanning ? "animate-spin" : ""} />
+            {scanning ? "Scanning..." : "Rescan"}
+          </button>
+        </div>
       </div>
 
       {/* Command output */}
@@ -142,10 +173,10 @@ export function MachinePanel() {
           <Badge ok={info.homebrew.installed} label={info.homebrew.installed ? "Installed" : "Missing"} />
           <VersionTag version={info.homebrew.version} />
           <Badge ok={info.homebrew.shellConfigured} label={info.homebrew.shellConfigured ? "Shell OK" : "Shell missing"} />
-          {brewOutdated !== null && brewOutdated > 0 && (
-            <span className="text-[10px] text-wo-warning font-medium">{brewOutdated} outdated</span>
+          {info.homebrew.outdatedCount !== null && info.homebrew.outdatedCount > 0 && (
+            <span className="text-[10px] text-wo-warning font-medium">{info.homebrew.outdatedCount} outdated</span>
           )}
-          {brewOutdated !== null && brewOutdated === 0 && (
+          {info.homebrew.outdatedCount !== null && info.homebrew.outdatedCount === 0 && (
             <span className="text-[10px] text-wo-success font-medium">All up to date</span>
           )}
         </div>
@@ -153,14 +184,7 @@ export function MachinePanel() {
           {!info.homebrew.installed && (
             <ActionButton label="Install Homebrew" variant="accent" onClick={() => runCommand('/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"', "Installing Homebrew")} />
           )}
-          {info.homebrew.installed && (
-            <ActionButton
-              label={checkingBrew ? "Checking..." : "Check for updates"}
-              loading={checkingBrew}
-              onClick={async () => { setCheckingBrew(true); const count = await ipc.checkBrewOutdated(); setBrewOutdated(count); setCheckingBrew(false); }}
-            />
-          )}
-          {brewOutdated !== null && brewOutdated > 0 && (
+          {info.homebrew.outdatedCount !== null && info.homebrew.outdatedCount > 0 && (
             <ActionButton label="Upgrade all" onClick={() => runCommand("brew upgrade", "Upgrading")} />
           )}
         </div>
@@ -187,7 +211,7 @@ export function MachinePanel() {
                   <Badge ok={tool.installed} label={tool.installed ? "Installed" : "Missing"} />
                   <span className="text-xs font-medium">{name}</span>
                   <VersionTag version={tool.version} />
-                  {tool.installed && (
+                  {tool.installed && tool.authenticated !== null && (
                     <Badge ok={tool.authenticated} label={tool.authenticated ? "Logged in" : "Not logged in"} />
                   )}
                   {hasUpdate && (
@@ -201,7 +225,7 @@ export function MachinePanel() {
                   {hasUpdate && (
                     <ActionButton label="Update" onClick={() => runCommand(update, `Updating ${name}`)} />
                   )}
-                  {tool.installed && !tool.authenticated && (
+                  {tool.installed && tool.authenticated === false && (
                     <ActionButton label="Login" onClick={() => runCommand(login, `Logging into ${name}`)} />
                   )}
                 </div>
@@ -328,12 +352,12 @@ export function MachinePanel() {
           <VersionTag version={info.rust.rustc.version} label="rustc" />
           <VersionTag version={info.rust.cargo.version} label="cargo" />
           <Badge ok={info.rust.shellConfigured} label={info.rust.shellConfigured ? "PATH OK" : "PATH missing"} />
-          {info.rust.updateAvailable && <span className="text-[10px] text-wo-warning font-medium">Update available</span>}
+          {info.rust.updateAvailable === true && <span className="text-[10px] text-wo-warning font-medium">Update available</span>}
         </div>
         {!info.rust.rustup.installed && (
           <ActionButton label="Install Rust" variant="accent" onClick={() => runCommand("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y", "Installing Rust")} />
         )}
-        {info.rust.updateAvailable && (
+        {info.rust.updateAvailable === true && (
           <ActionButton label="Update Rust" onClick={() => runCommand("rustup update", "Updating Rust")} />
         )}
         {!info.rust.shellConfigured && info.rust.rustup.installed && (

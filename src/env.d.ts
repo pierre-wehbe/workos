@@ -83,6 +83,16 @@ interface ElectronAPI {
   fixShellConfig: (file: string, line: string) => Promise<{ ok: boolean; message: string }>;
   checkBrewOutdated: () => Promise<number>;
   setPyenvGlobal: (version: string) => Promise<{ ok: boolean }>;
+  checkMachineUpdates: () => Promise<{
+    brewOutdatedCount: number;
+    rustUpdateAvailable: boolean;
+    pyenvLatestAvailable: string | null;
+    ai: {
+      claude: { latestVersion: string | null; authenticated: boolean | null };
+      codex: { latestVersion: string | null; authenticated: boolean | null };
+      gemini: { latestVersion: string | null; authenticated: boolean | null };
+    };
+  }>;
 }
 
 declare global {

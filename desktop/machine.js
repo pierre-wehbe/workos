@@ -69,14 +69,12 @@ async function detectPython() {
   let latestAvailable = null;
 
   if (pyenvInstalled) {
-    const [versionsRaw, globalRaw, availableRaw] = await Promise.all([
+    const [versionsRaw, globalRaw] = await Promise.all([
       run("pyenv versions --bare"),
       run("pyenv global"),
-      run("pyenv install --list 2>/dev/null | grep -E '^\\s+3\\.' | grep -v dev | grep -v rc | tail -1"),
     ]);
     installedVersions = versionsRaw ? versionsRaw.split("\n").map(v => v.trim()).filter(Boolean) : [];
     globalVersion = globalRaw?.trim() || null;
-    latestAvailable = availableRaw?.trim() || null;
   }
 
   const poetryInstalled = !!poetryVersion;
@@ -145,13 +143,12 @@ async function detectRust() {
     };
   }
 
-  const [toolchainRaw, toolchainsRaw, targetsRaw, rustcRaw, cargoRaw, checkRaw] = await Promise.all([
+  const [toolchainRaw, toolchainsRaw, targetsRaw, rustcRaw, cargoRaw] = await Promise.all([
     run("rustup show active-toolchain"),
     run("rustup toolchain list"),
     run("rustup target list --installed"),
     run("rustc --version"),
     run("cargo --version"),
-    run("rustup check 2>/dev/null"),
   ]);
 
   return {
@@ -162,7 +159,7 @@ async function detectRust() {
     installedToolchains: toolchainsRaw ? toolchainsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [],
     installedTargets: targetsRaw ? targetsRaw.split("\n").map(t => t.trim()).filter(Boolean) : [],
     shellConfigured: shellFileContains(ZSHRC, ".cargo/bin") || shellFileContains(ZPROFILE, ".cargo/bin"),
-    updateAvailable: checkRaw ? checkRaw.includes("Update available") : false,
+    updateAvailable: null, // checked on demand via machine:check-updates
   };
 }
 
@@ -249,6 +246,7 @@ function auditShellConfig() {
 
 // ─── AI CLIs ───
 
+// Fast: just check if installed + version
 async function detectAICLIs() {
   const [claudeRaw, codexRaw, geminiRaw] = await Promise.all([
     run("claude --version 2>/dev/null"),
@@ -256,31 +254,36 @@ async function detectAICLIs() {
     run("gemini --version 2>/dev/null"),
   ]);
 
-  // Check auth status
-  const [claudeAuth, codexAuth, geminiAuth] = await Promise.all([
-    claudeRaw ? run("claude auth status 2>&1") : Promise.resolve(null),
-    codexRaw ? run("codex auth status 2>&1") : Promise.resolve(null),
-    geminiRaw ? run("gemini auth status 2>&1") : Promise.resolve(null),
-  ]);
+  return {
+    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
+    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
+    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: null },
+  };
+}
 
-  // Check latest versions via npm
-  const [claudeLatest, codexLatest, geminiLatest] = await Promise.all([
-    claudeRaw ? run("npm view @anthropic-ai/claude-code version 2>/dev/null") : Promise.resolve(null),
-    codexRaw ? run("npm view @openai/codex version 2>/dev/null") : Promise.resolve(null),
-    geminiRaw ? run("npm view @anthropic-ai/gemini-cli version 2>/dev/null || npm view @google/gemini-cli version 2>/dev/null") : Promise.resolve(null),
-  ]);
-
+// Slow: auth + npm latest — called separately on demand
+async function checkAIExtras() {
   function parseAuth(raw) {
-    if (!raw) return false;
+    if (!raw) return null;
     const lower = raw.toLowerCase();
-    // Consider authenticated if output doesn't contain error/not-logged-in indicators
-    return !lower.includes("not logged") && !lower.includes("not authenticated") && !lower.includes("no api key") && !lower.includes("error") && !lower.includes("usage:");
+    if (lower.includes("not logged") || lower.includes("not authenticated") || lower.includes("no api key") || lower.includes("usage:")) return false;
+    if (lower.includes("error")) return false;
+    return true;
   }
 
+  const [claudeAuth, codexAuth, geminiAuth, claudeLatest, codexLatest, geminiLatest] = await Promise.all([
+    run("claude auth status 2>&1"),
+    run("codex auth status 2>&1"),
+    run("gemini auth status 2>&1"),
+    run("npm view @anthropic-ai/claude-code version 2>/dev/null"),
+    run("npm view @openai/codex version 2>/dev/null"),
+    run("npm view @google/gemini-cli version 2>/dev/null"),
+  ]);
+
   return {
-    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: claudeLatest ?? null, authenticated: parseAuth(claudeAuth) },
-    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: codexLatest ?? null, authenticated: parseAuth(codexAuth) },
-    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: geminiLatest ?? null, authenticated: parseAuth(geminiAuth) },
+    claude: { latestVersion: claudeLatest ?? null, authenticated: parseAuth(claudeAuth) },
+    codex: { latestVersion: codexLatest ?? null, authenticated: parseAuth(codexAuth) },
+    gemini: { latestVersion: geminiLatest ?? null, authenticated: parseAuth(geminiAuth) },
   };
 }
 
@@ -317,4 +320,21 @@ async function setPyenvGlobal(version) {
   return { ok: result !== null };
 }
 
-module.exports = { scanMachine, fixShellConfig, checkBrewOutdated, setPyenvGlobal };
+// Slow checks — run in background on demand
+async function checkUpdates() {
+  const [brewOutdated, rustCheck, pyenvLatest, aiExtras] = await Promise.all([
+    checkBrewOutdated(),
+    run("rustup check 2>/dev/null"),
+    run("pyenv install --list 2>/dev/null | grep -E '^\\s+3\\.' | grep -v dev | grep -v rc | tail -1"),
+    checkAIExtras(),
+  ]);
+
+  return {
+    brewOutdatedCount: brewOutdated,
+    rustUpdateAvailable: rustCheck ? rustCheck.includes("Update available") : false,
+    pyenvLatestAvailable: pyenvLatest?.trim() || null,
+    ai: aiExtras,
+  };
+}
+
+module.exports = { scanMachine, fixShellConfig, checkBrewOutdated, setPyenvGlobal, checkUpdates };

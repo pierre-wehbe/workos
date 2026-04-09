@@ -105,7 +105,7 @@ export interface MachineInfo {
     installedToolchains: string[];
     installedTargets: string[];
     shellConfigured: boolean;
-    updateAvailable: boolean;
+    updateAvailable: boolean | null;
   };
   android: {
     studio: { installed: boolean };
@@ -120,9 +120,9 @@ export interface MachineInfo {
     tools: { swiftformat: string | null; swiftlint: string | null; cocoapods: string | null };
   };
   ai: {
-    claude: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean };
-    codex: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean };
-    gemini: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean };
+    claude: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean | null };
+    codex: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean | null };
+    gemini: { installed: boolean; version: string | null; latestVersion: string | null; authenticated: boolean | null };
   };
   shell: {
     zshrcExists: boolean;

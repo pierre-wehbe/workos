@@ -68,6 +68,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   fixShellConfig: (file, line) => ipcRenderer.invoke("machine:fix-shell", file, line),
   checkBrewOutdated: () => ipcRenderer.invoke("machine:brew-outdated"),
   setPyenvGlobal: (version) => ipcRenderer.invoke("machine:pyenv-global", version),
+  checkMachineUpdates: () => ipcRenderer.invoke("machine:check-updates"),
 
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),

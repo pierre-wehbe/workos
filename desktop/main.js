@@ -173,6 +173,7 @@ app.whenReady().then(() => {
   ipcMain.handle("machine:fix-shell", (_e, file, line) => machine.fixShellConfig(file, line));
   ipcMain.handle("machine:brew-outdated", () => machine.checkBrewOutdated());
   ipcMain.handle("machine:pyenv-global", (_e, version) => machine.setPyenvGlobal(version));
+  ipcMain.handle("machine:check-updates", () => machine.checkUpdates());
 
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));
