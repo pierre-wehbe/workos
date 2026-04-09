@@ -6,15 +6,18 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { useWorkspaces } from "./lib/use-workspaces";
-import { ipc } from "./lib/ipc";
 import type { AppConfig, Project } from "./lib/types";
+import { ProcessBadge } from "./components/ProcessBadge";
+import { ProcessPanel } from "./components/ProcessPanel";
+import { useProcesses } from "./lib/use-processes";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [view, setView] = useState<"dashboard" | "settings">("dashboard");
   const { workspaces, activeWorkspace, switchWorkspace, refresh: refreshWorkspaces } = useWorkspaces();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [runningProcessIds, setRunningProcessIds] = useState<Set<string>>(new Set());
+  const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
+  const [showProcessPanel, setShowProcessPanel] = useState(false);
 
   useEffect(() => {
     window.electronAPI.getConfig().then(setConfig);
@@ -27,19 +30,27 @@ export default function App() {
     refreshWorkspaces();
   };
 
-  const handleStartProcess = (project: Project) => {
-    setRunningProcessIds((prev) => new Set(prev).add(project.id));
+  const handleStartProcess = async (project: Project) => {
+    await startProcess({
+      projectId: project.id,
+      projectName: project.name,
+      workspaceId: activeWorkspace?.id ?? "",
+      workspaceName: activeWorkspace?.name ?? "",
+      toolName: project.devCommand ?? "dev",
+      command: project.devCommand ?? "",
+      workingDir: project.localPath,
+    });
     setSelectedProject(project);
   };
 
   const handleStopProcess = (projectId: string) => {
-    ipc.cancelCommand(projectId);
-    setRunningProcessIds((prev) => {
-      const next = new Set(prev);
-      next.delete(projectId);
-      return next;
-    });
+    const proc = processes.find((p) => p.projectId === projectId && p.status === "running");
+    if (proc) stopProcess(proc.id);
   };
+
+  const runningProcessIds = new Set(
+    processes.filter((p) => p.status === "running").map((p) => p.projectId)
+  );
 
   return (
     <div className="h-full flex flex-col bg-wo-bg text-wo-text">
@@ -48,7 +59,19 @@ export default function App() {
         <span className="pl-16 text-xs font-medium text-wo-text-tertiary uppercase tracking-widest select-none">
           WorkOS
         </span>
-        <div className="no-drag ml-auto flex items-center gap-1">
+        <div className="no-drag ml-auto flex items-center gap-1 relative">
+          <ProcessBadge count={runningCount} onClick={() => setShowProcessPanel(!showProcessPanel)} />
+          {showProcessPanel && (
+            <ProcessPanel
+              processes={processes}
+              workspaces={workspaces}
+              activeWorkspaceId={activeWorkspace?.id ?? null}
+              onStop={stopProcess}
+              onClear={clearProcess}
+              onClearAllStopped={clearAllStopped}
+              onClose={() => setShowProcessPanel(false)}
+            />
+          )}
           <ThemeToggle />
         </div>
       </div>
