@@ -15,7 +15,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({ workspace, onOpenProject, runningProcessIds, onStartProcess, onStopProcess }: DashboardPageProps) {
-  const { projects, refresh, remove } = useProjects(workspace.id);
+  const { projects, refresh, update, remove } = useProjects(workspace.id);
   const [showAdd, setShowAdd] = useState(false);
   const [scanning, setScanning] = useState(false);
 
@@ -89,6 +89,7 @@ export function DashboardPage({ workspace, onOpenProject, runningProcessIds, onS
               onStart={() => onStartProcess(p)}
               onStop={() => onStopProcess(p.id)}
               onOpen={() => onOpenProject(p)}
+              onTogglePin={async () => { await update(p.id, { pinned: !p.pinned }); }}
               onDelete={() => { if (confirm(`Delete "${p.name}"?`)) remove(p.id); }}
             />
           ))}

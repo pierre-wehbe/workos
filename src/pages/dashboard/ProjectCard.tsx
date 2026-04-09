@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, GitBranch, Play, Square, Terminal as TerminalIcon } from "lucide-react";
+import { FolderOpen, GitBranch, Pin, Play, Square, Terminal as TerminalIcon } from "lucide-react";
 import type { Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 
@@ -9,10 +9,11 @@ interface ProjectCardProps {
   onStart: () => void;
   onStop: () => void;
   onOpen: () => void;
+  onTogglePin: () => void;
   onDelete: () => void;
 }
 
-export function ProjectCard({ project, isRunning, onStart, onStop, onOpen, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, isRunning, onStart, onStop, onOpen, onTogglePin, onDelete }: ProjectCardProps) {
   const [branch, setBranch] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,7 +21,9 @@ export function ProjectCard({ project, isRunning, onStart, onStop, onOpen, onDel
   }, [project.localPath]);
 
   return (
-    <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-wo-border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors">
+    <div className={`flex items-center justify-between gap-4 p-4 rounded-xl border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors ${
+      project.pinned ? "border-wo-accent/15" : "border-wo-border"
+    }`}>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen}>
         <div className="flex items-center gap-2 mb-0.5">
           {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
@@ -36,6 +39,16 @@ export function ProjectCard({ project, isRunning, onStart, onStop, onOpen, onDel
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={onTogglePin}
+          className={`p-2 rounded-lg transition-colors ${
+            project.pinned ? "text-wo-accent hover:bg-wo-bg-subtle" : "text-wo-text-tertiary hover:bg-wo-bg-subtle"
+          }`}
+          title={project.pinned ? "Unpin" : "Pin to top"}
+        >
+          <Pin size={13} className={project.pinned ? "fill-current" : ""} />
+        </button>
         {project.devCommand && (
           isRunning ? (
             <button type="button" onClick={onStop} className="p-2 rounded-lg text-wo-danger hover:bg-wo-bg-subtle transition-colors" title="Stop">

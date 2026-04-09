@@ -57,6 +57,12 @@ function init(app) {
     );
   `);
 
+  // Migrations
+  const cols = db.prepare("PRAGMA table_info(projects)").all().map((c) => c.name);
+  if (!cols.includes("pinned")) {
+    db.exec("ALTER TABLE projects ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+  }
+
   return db;
 }
 
@@ -129,12 +135,13 @@ function rowToProject(row) {
     devCommand: row.dev_command,
     ide: row.ide,
     bootstrapCommand: row.bootstrap_command,
+    pinned: row.pinned === 1,
     createdAt: row.created_at,
   };
 }
 
 function getProjects(workspaceId) {
-  return db.prepare("SELECT * FROM projects WHERE workspace_id = ? ORDER BY created_at").all(workspaceId).map(rowToProject);
+  return db.prepare("SELECT * FROM projects WHERE workspace_id = ? ORDER BY pinned DESC, name").all(workspaceId).map(rowToProject);
 }
 
 function createProject({ workspaceId, name, repoUrl, localPath, devCommand, ide, bootstrapCommand }) {
@@ -149,13 +156,14 @@ function updateProject(id, fields) {
   const colMap = {
     name: "name", repoUrl: "repo_url", localPath: "local_path",
     devCommand: "dev_command", ide: "ide", bootstrapCommand: "bootstrap_command",
+    pinned: "pinned",
   };
   const sets = [];
   const values = [];
   for (const [key, col] of Object.entries(colMap)) {
     if (key in fields) {
       sets.push(`${col} = ?`);
-      values.push(fields[key] ?? null);
+      values.push(key === "pinned" ? (fields[key] ? 1 : 0) : (fields[key] ?? null));
     }
   }
   if (sets.length === 0) return getProjectById(id);

@@ -15,6 +15,7 @@ export interface Project {
   devCommand: string | null;
   ide: "cursor" | "vscode" | "xcode";
   bootstrapCommand: string | null;
+  pinned: boolean;
   createdAt: string;
 }
 
