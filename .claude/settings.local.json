@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git commit:*)",
+      "Bash(wc -l /Users/pierro/Documents/Development/WorkOS/src/checkers/prerequisites/*.ts)",
+      "Bash(wc -l /Users/pierro/Documents/Development/WorkOS/src/checkers/languages/*.ts)",
+      "Bash(npx vite:*)",
+      "Bash(ELECTRON_RENDERER_URL=http://localhost:5555 npx electron electron/main.js)",
+      "Bash(kill %1 wait)",
+      "Bash(ELECTRON_RENDERER_URL=http://localhost:5555 npx electron electron/main.cjs)",
+      "Bash(ELECTRON_RENDERER_URL=http://localhost:5555 ./node_modules/.bin/electron electron/main.cjs)",
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/electron/package.json'\\).version\\)\")",
+      "Bash(ELECTRON_RENDERER_URL=http://localhost:5555 ./node_modules/.bin/electron electron/main.js)",
+      "Bash(./node_modules/.bin/electron /tmp/test-electron.mjs)",
+      "Bash(./node_modules/.bin/electron /tmp/test-electron.cjs)",
+      "Bash(./node_modules/.bin/electron /tmp/test-req.js)",
+      "Bash(./node_modules/.bin/electron test-el.js)",
+      "Bash(./node_modules/.bin/electron .)",
+      "Bash(./node_modules/_electron_bak/dist/Electron.app/Contents/MacOS/Electron .)",
+      "Bash(./node_modules/.bin/electron --version)",
+      "Bash(node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --version)",
+      "Bash(node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --abi)",
+      "Bash(node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .)",
+      "Bash(npx electron:*)",
+      "Bash(grep -v '^\\\\.\\\\.$')",
+      "Bash(grep -v '^\\\\.$')",
+      "Bash(grep -v '^\\\\.git$')",
+      "Bash(git stash:*)"
+    ]
+  }
+}

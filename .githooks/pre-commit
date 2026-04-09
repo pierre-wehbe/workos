@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Pre-commit hook — will be restored when scripts/ is set up
+exit 0
