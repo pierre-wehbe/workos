@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, FolderOpen, GitBranch, Maximize2, Play, RotateCw, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, FolderOpen, GitBranch, Maximize2, Play, RotateCw, Square, Trash2 } from "lucide-react";
 import type { ProcessEntry, Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 import { Terminal } from "../../components/Terminal";
@@ -31,37 +31,55 @@ export function ProjectDetailPage({
   const [deleting, setDeleting] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalFullscreen, setTerminalFullscreen] = useState(false);
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  // Find running process for this project
-  const runningProcess = processes.find((p) => p.projectId === project.id && p.status === "running");
-  const lastProcess = processes
+  // All processes for this project, newest first
+  const projectProcesses = processes
     .filter((p) => p.projectId === project.id)
-    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0];
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+
+  const runningProcess = projectProcesses.find((p) => p.status === "running");
+
+  // Auto-select: use explicit selection if valid, otherwise latest
+  const activeProcess = (selectedProcessId
+    ? projectProcesses.find((p) => p.id === selectedProcessId)
+    : null) ?? projectProcesses[0] ?? null;
 
   useEffect(() => {
     ipc.gitBranch(project.localPath).then(setBranch);
   }, [project.localPath]);
 
-  // Load logs for the latest process and stream new output
+  // When a new process starts, auto-select it
   useEffect(() => {
-    if (!lastProcess) { setTerminalOutput(""); return; }
+    if (projectProcesses.length > 0) {
+      const newest = projectProcesses[0];
+      if (newest.status === "running") {
+        setSelectedProcessId(newest.id);
+      }
+    }
+  }, [projectProcesses.length]);
 
-    ipc.getProcessLogs(lastProcess.id).then(setTerminalOutput);
+  // Load logs for selected process and stream new output
+  useEffect(() => {
+    if (!activeProcess) { setTerminalOutput(""); return; }
 
-    if (lastProcess.status === "running") {
+    ipc.getProcessLogs(activeProcess.id).then(setTerminalOutput);
+
+    if (activeProcess.status === "running") {
       const unsub = ipc.onProcessOutput((id, chunk) => {
-        if (id !== lastProcess.id) return;
+        if (id !== activeProcess.id) return;
         setTerminalOutput((prev) => prev + chunk);
       });
       cleanupRef.current = unsub;
       return () => { unsub(); cleanupRef.current = null; };
     }
-  }, [lastProcess?.id, lastProcess?.status]);
+  }, [activeProcess?.id, activeProcess?.status]);
 
   const handleStart = () => {
     if (!project.devCommand) return;
     setTerminalOutput("");
+    setSelectedProcessId(null); // Will auto-select newest
     onStartProcess({
       projectId: project.id,
       projectName: project.name,
@@ -75,6 +93,7 @@ export function ProjectDetailPage({
 
   const handleRunTool = (command: string, workingDir: string, toolName: string) => {
     setTerminalOutput("");
+    setSelectedProcessId(null); // Will auto-select newest
     const fullPath = workingDir === "." ? project.localPath : `${project.localPath}/${workingDir}`;
     onStartProcess({
       projectId: project.id,
@@ -97,7 +116,8 @@ export function ProjectDetailPage({
     onDeleted();
   };
 
-  const isRunning = !!runningProcess;
+  const isActiveRunning = activeProcess?.status === "running";
+  const hasAnyRunning = !!runningProcess;
 
   return (
     <div className="h-full flex flex-col">
@@ -125,7 +145,7 @@ export function ProjectDetailPage({
           </div>
           <div className="flex items-center gap-2">
             {project.devCommand && (
-              isRunning ? (
+              hasAnyRunning ? (
                 <button type="button" onClick={() => onStopProcess(runningProcess!.id)} className="flex items-center gap-2 px-4 h-9 rounded-lg bg-wo-danger text-white text-sm font-medium hover:opacity-90 transition-opacity">
                   <Square size={14} />
                   Stop
@@ -195,10 +215,28 @@ export function ProjectDetailPage({
           {/* Terminal toolbar */}
           <div className="shrink-0 flex items-center justify-between px-6 py-2">
             <div className="flex items-center gap-2">
-              {isRunning ? (
+              {/* Process selector */}
+              {projectProcesses.length > 1 && (
+                <div className="relative">
+                  <select
+                    value={activeProcess?.id ?? ""}
+                    onChange={(e) => setSelectedProcessId(e.target.value)}
+                    className="h-7 pl-2 pr-6 rounded-md border border-wo-border bg-wo-bg text-xs text-wo-text appearance-none focus:outline-none focus:ring-2 focus:ring-wo-accent/40"
+                  >
+                    {projectProcesses.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.status === "running" ? "\u25cf " : "\u25cb "}
+                        {p.toolName} — {new Date(p.startedAt).toLocaleTimeString()}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-wo-text-tertiary pointer-events-none" />
+                </div>
+              )}
+              {activeProcess?.status === "running" ? (
                 <button
                   type="button"
-                  onClick={() => onStopProcess(runningProcess!.id)}
+                  onClick={() => onStopProcess(activeProcess.id)}
                   className="flex items-center gap-1.5 px-3 h-7 rounded-md bg-wo-danger text-white text-xs font-medium hover:opacity-90 transition-opacity"
                 >
                   <Square size={11} />
@@ -214,10 +252,10 @@ export function ProjectDetailPage({
                   {terminalOutput ? "Restart" : "Start"}
                 </button>
               ) : null}
-              {isRunning && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
-              {!isRunning && lastProcess?.exitCode != null && (
-                <span className={`text-xs ${lastProcess.exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
-                  Exited with code {lastProcess.exitCode}
+              {activeProcess?.status === "running" && <span className="w-2 h-2 rounded-full bg-wo-success animate-pulse" />}
+              {activeProcess && activeProcess.status !== "running" && activeProcess.exitCode != null && (
+                <span className={`text-xs ${activeProcess.exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
+                  Exited with code {activeProcess.exitCode}
                 </span>
               )}
             </div>
@@ -234,9 +272,9 @@ export function ProjectDetailPage({
           </div>
           {/* Terminal content */}
           <div className="flex-1 min-h-0 px-6 pb-6">
-            {terminalOutput || isRunning ? (
+            {terminalOutput || isActiveRunning ? (
               <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
-                <Terminal output={terminalOutput} isRunning={isRunning} />
+                <Terminal output={terminalOutput} isRunning={isActiveRunning} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
@@ -257,9 +295,9 @@ export function ProjectDetailPage({
       {terminalFullscreen && (
         <FullscreenTerminal
           output={terminalOutput}
-          isRunning={isRunning}
-          title={`${project.name} — ${lastProcess?.toolName ?? project.devCommand ?? "Terminal"}`}
-          processId={lastProcess?.id}
+          isRunning={isActiveRunning}
+          title={`${project.name} — ${activeProcess?.toolName ?? project.devCommand ?? "Terminal"}`}
+          processId={activeProcess?.id}
           onClose={() => setTerminalFullscreen(false)}
         />
       )}
