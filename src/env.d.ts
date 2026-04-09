@@ -7,6 +7,8 @@ interface ElectronAPI {
   getConfig: () => Promise<AppConfig>;
   openInIDE: (path: string, ide: string) => Promise<void>;
   openInFinder: (path: string) => Promise<void>;
+  getDbPath: () => Promise<string>;
+  revealDb: () => Promise<void>;
 
   // Theme
   setTheme: (mode: ThemeMode) => Promise<void>;

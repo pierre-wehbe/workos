@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { OnboardingPage } from "./pages/onboarding/OnboardingPage";
 import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
 import { useWorkspaces } from "./lib/use-workspaces";
 import { ipc } from "./lib/ipc";
 import type { AppConfig, Project } from "./lib/types";
@@ -82,9 +83,12 @@ export default function App() {
                   onStopProcess={handleStopProcess}
                 />
               ) : view === "settings" ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-wo-text-secondary">Settings — Checkpoint 6</p>
-                </div>
+                <SettingsPage
+                  workspaces={workspaces}
+                  activeWorkspace={activeWorkspace}
+                  onSwitchWorkspace={switchWorkspace}
+                  onRefresh={refreshWorkspaces}
+                />
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-wo-text-secondary">Select a workspace</p>

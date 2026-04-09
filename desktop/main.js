@@ -54,6 +54,15 @@ app.whenReady().then(() => {
     spawn("open", [targetPath], { detached: true, stdio: "ignore" }).unref();
   });
 
+  ipcMain.handle("app:get-db-path", () => {
+    return path.join(app.getPath("userData"), "workos.db");
+  });
+
+  ipcMain.handle("app:reveal-db", () => {
+    const dbPath = path.join(app.getPath("userData"), "workos.db");
+    spawn("open", ["-R", dbPath], { detached: true, stdio: "ignore" }).unref();
+  });
+
   // --- Theme ---
   ipcMain.handle("theme:set", (_e, mode) => { nativeTheme.themeSource = mode; });
 

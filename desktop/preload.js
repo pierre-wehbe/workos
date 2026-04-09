@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getConfig: () => ipcRenderer.invoke("app:get-config"),
   openInIDE: (p, ide) => ipcRenderer.invoke("app:open-in-ide", p, ide),
   openInFinder: (p) => ipcRenderer.invoke("app:open-in-finder", p),
+  getDbPath: () => ipcRenderer.invoke("app:get-db-path"),
+  revealDb: () => ipcRenderer.invoke("app:reveal-db"),
 
   // Theme
   setTheme: (mode) => ipcRenderer.invoke("theme:set", mode),
