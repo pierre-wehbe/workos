@@ -230,10 +230,10 @@ async function detectSwift() {
 function auditShellConfig() {
   const checks = [
     { file: ".zprofile", pattern: "brew shellenv", label: "Homebrew shellenv", fix: 'eval "$(/opt/homebrew/bin/brew shellenv)"' },
-    { file: ".zshrc", pattern: "pyenv init", label: "pyenv init", fix: 'eval "$(pyenv init -)"' },
+    { file: ".zshrc", pattern: "pyenv init", altFile: ".zprofile", label: "pyenv init", fix: 'eval "$(pyenv init -)"' },
     { file: ".zshrc", pattern: ".local/bin", label: "Poetry PATH", fix: 'export PATH="$HOME/.local/bin:$PATH"' },
-    { file: ".zshrc", pattern: ".cargo/bin", label: "Cargo PATH", fix: 'export PATH="$HOME/.cargo/bin:$PATH"' },
-    { file: ".zshrc", pattern: "ANDROID_HOME", label: "ANDROID_HOME", fix: 'export ANDROID_HOME="$HOME/Library/Android/sdk"\nexport PATH="$ANDROID_HOME/platform-tools:$PATH"' },
+    { file: ".zshrc", pattern: ".cargo/bin", altFile: ".zprofile", label: "Cargo PATH", fix: 'export PATH="$HOME/.cargo/bin:$PATH"' },
+    { file: ".zshrc", pattern: "ANDROID_HOME", altFile: ".zprofile", label: "ANDROID_HOME", fix: 'export ANDROID_HOME="$HOME/Library/Android/sdk"\nexport PATH="$ANDROID_HOME/platform-tools:$PATH"' },
   ];
 
   return {
@@ -241,7 +241,8 @@ function auditShellConfig() {
     zprofileExists: fs.existsSync(ZPROFILE),
     issues: checks.map((c) => ({
       ...c,
-      configured: shellFileContains(c.file === ".zprofile" ? ZPROFILE : ZSHRC, c.pattern),
+      configured: shellFileContains(c.file === ".zprofile" ? ZPROFILE : ZSHRC, c.pattern)
+        || (c.altFile ? shellFileContains(c.altFile === ".zprofile" ? ZPROFILE : ZSHRC, c.pattern) : false),
     })),
   };
 }
