@@ -4,6 +4,7 @@ import type { Project } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 import { useProcess } from "../../lib/use-process";
 import { Terminal } from "../../components/Terminal";
+import { ToolsTab } from "./ToolsTab";
 
 interface ProjectDetailPageProps {
   project: Project;
@@ -14,6 +15,7 @@ interface ProjectDetailPageProps {
 export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailPageProps) {
   const { isRunning, output, exitCode, start, stop } = useProcess(project.id);
   const [branch, setBranch] = useState<string | null>(null);
+  const [tab, setTab] = useState<"terminal" | "tools">("terminal");
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -101,25 +103,64 @@ export function ProjectDetailPage({ project, onBack, onDeleted }: ProjectDetailP
         </div>
       </div>
 
-      {/* Terminal */}
-      <div className="flex-1 min-h-0 p-6">
-        {output || isRunning ? (
-          <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
-            <Terminal output={output} isRunning={isRunning} />
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
-            {project.devCommand
-              ? `Press Start to run: ${project.devCommand}`
-              : "No dev command configured for this project."}
-            {exitCode !== null && (
-              <span className={`ml-2 ${exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
-                (exited with code {exitCode})
-              </span>
-            )}
-          </div>
-        )}
+      {/* Tab bar */}
+      <div className="shrink-0 flex gap-1 px-6 pt-3 border-b border-wo-border">
+        <button
+          type="button"
+          onClick={() => setTab("terminal")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "terminal"
+              ? "border-wo-accent text-wo-accent"
+              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
+          }`}
+        >
+          Terminal
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("tools")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "tools"
+              ? "border-wo-accent text-wo-accent"
+              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
+          }`}
+        >
+          Tools
+        </button>
       </div>
+
+      {/* Terminal */}
+      {tab === "terminal" && (
+        <div className="flex-1 min-h-0 p-6">
+          {output || isRunning ? (
+            <div className="h-full rounded-xl border border-wo-border bg-wo-bg-subtle overflow-hidden">
+              <Terminal output={output} isRunning={isRunning} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-wo-text-tertiary text-sm">
+              {project.devCommand
+                ? `Press Start to run: ${project.devCommand}`
+                : "No dev command configured for this project."}
+              {exitCode !== null && (
+                <span className={`ml-2 ${exitCode === 0 ? "text-wo-success" : "text-wo-danger"}`}>
+                  (exited with code {exitCode})
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "tools" && (
+        <ToolsTab
+          project={project}
+          onRunTool={(command, workingDir, toolName) => {
+            const fullPath = workingDir === "." ? project.localPath : `${project.localPath}/${workingDir}`;
+            start(command, fullPath);
+            setTab("terminal");
+          }}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {showDelete && (
