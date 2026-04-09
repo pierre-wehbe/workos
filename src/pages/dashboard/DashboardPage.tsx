@@ -98,6 +98,7 @@ export function DashboardPage({ workspace, onOpenProject, runningProcessIds, onS
       {showAdd && (
         <AddProjectDialog
           workspaceId={workspace.id}
+          workspacePath={workspace.path}
           onCreated={() => { setShowAdd(false); refresh(); }}
           onClose={() => setShowAdd(false)}
         />

@@ -15,6 +15,9 @@ interface ElectronAPI {
   runSync: (cmd: string) => Promise<{ ok: boolean; stdout: string; stderr: string }>;
   selectDirectory: () => Promise<string | null>;
   scanRepos: (wsPath: string) => Promise<Array<{ name: string; localPath: string; repoUrl: string }>>;
+  initRepo: (projectPath: string) => Promise<{ ok: boolean; error?: string }>;
+  cloneRepo: (repoUrl: string, targetPath: string) => Promise<{ ok: boolean; error?: string }>;
+  isGitRepo: (dirPath: string) => Promise<boolean>;
   runStreaming: (id: string, cmd: string) => void;
   cancelCommand: (id: string) => void;
   onStdout: (cb: (id: string, chunk: string) => void) => () => void;

@@ -89,6 +89,28 @@ app.whenReady().then(() => {
 
     return repos;
   });
+  ipcMain.handle("shell:init-repo", (_e, projectPath) => {
+    const env = loadShellEnvironment();
+    fs.mkdirSync(projectPath, { recursive: true });
+    try {
+      execFileSync("git", ["init", "-b", "main"], { cwd: projectPath, encoding: "utf8", env, timeout: 10000 });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+  ipcMain.handle("shell:clone-repo", (_e, repoUrl, targetPath) => {
+    const env = loadShellEnvironment();
+    try {
+      execFileSync("git", ["clone", repoUrl, targetPath], { encoding: "utf8", env, timeout: 120000 });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.stderr || err.message };
+    }
+  });
+  ipcMain.handle("shell:is-git-repo", (_e, dirPath) => {
+    return fs.existsSync(path.join(dirPath, ".git"));
+  });
   ipcMain.on("shell:run-streaming", (_e, { id, cmd }) => { if (mainWindow) runStreaming(id, cmd, mainWindow); });
   ipcMain.on("shell:cancel", (_e, { id }) => { cancelProcess(id); });
 
