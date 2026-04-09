@@ -36,7 +36,7 @@ export function useTheme() {
 
   const toggle = useCallback(() => {
     setThemeState((prev) => {
-      const order: ThemeMode[] = ["system", "light", "dark"];
+      const order: ThemeMode[] = ["light", "dark", "system"];
       return order[(order.indexOf(prev) + 1) % order.length];
     });
   }, []);
