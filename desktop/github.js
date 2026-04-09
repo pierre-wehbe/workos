@@ -103,6 +103,16 @@ function getCache() {
   };
 }
 
+async function getUserOrgs() {
+  const raw = await gh(["api", "user/orgs", "--jq", ".[].login"]);
+  if (!raw) return [];
+  const username = await getUsername();
+  const orgs = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  // Include personal account as an option
+  if (username && !orgs.includes(username)) orgs.unshift(username);
+  return orgs;
+}
+
 function init(window) {
   mainWindow = window;
 
@@ -134,4 +144,4 @@ async function checkGhInstalled() {
   return { installed: true, authenticated, username };
 }
 
-module.exports = { init, setWindow, destroy, fetchAll, getCache, checkGhInstalled };
+module.exports = { init, setWindow, destroy, fetchAll, getCache, checkGhInstalled, getUserOrgs };

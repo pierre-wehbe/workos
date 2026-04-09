@@ -78,16 +78,17 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
   const [showDrafts, setShowDrafts] = useState(true);
   const [filterRepo, setFilterRepo] = useState<string>("all");
 
-  const wsOrg = activeWorkspace?.org?.toLowerCase() ?? "";
+  const wsOrgs = (activeWorkspace?.githubOrgs ?? []).map((o) => o.toLowerCase());
+  const hasOrgConfig = wsOrgs.length > 0;
 
   const prs = tab === "my-prs" ? data.myPRs : data.reviewRequests;
 
   // Apply filters in order
   let filtered = prs;
 
-  // Scope filter: workspace org or all
-  if (filterScope === "workspace" && wsOrg) {
-    filtered = filtered.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/"));
+  // Scope filter: workspace github orgs or all
+  if (filterScope === "workspace" && hasOrgConfig) {
+    filtered = filtered.filter((p) => wsOrgs.includes(p.owner.toLowerCase()));
   }
 
   // Draft filter
@@ -102,11 +103,11 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
 
   // Counts for filter chips
   const draftCount = prs.filter((p) => p.isDraft).length;
-  const wsCount = wsOrg ? prs.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/")).length : 0;
+  const wsCount = hasOrgConfig ? prs.filter((p) => wsOrgs.includes(p.owner.toLowerCase())).length : 0;
 
   // Build unique repo list from current scope
-  const scopedPRs = filterScope === "workspace" && wsOrg
-    ? prs.filter((p) => p.owner.toLowerCase() === wsOrg || p.repo.toLowerCase().startsWith(wsOrg + "/"))
+  const scopedPRs = filterScope === "workspace" && hasOrgConfig
+    ? prs.filter((p) => wsOrgs.includes(p.owner.toLowerCase()))
     : prs;
   const allRepos = [...new Set(scopedPRs.map((p) => p.repo))].sort();
 
@@ -162,12 +163,14 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
       {/* Filters */}
       <div className="shrink-0 flex items-center gap-2 px-6 py-2.5 border-b border-wo-border flex-wrap">
         <Filter size={12} className="text-wo-text-tertiary" />
-        {wsOrg && (
+        {hasOrgConfig ? (
           <>
-            <FilterChip label={activeWorkspace?.name ?? wsOrg} active={filterScope === "workspace"} count={wsCount} onClick={() => setFilterScope("workspace")} />
+            <FilterChip label={activeWorkspace?.name ?? "Workspace"} active={filterScope === "workspace"} count={wsCount} onClick={() => setFilterScope("workspace")} />
             <FilterChip label="All orgs" active={filterScope === "all"} count={prs.length} onClick={() => setFilterScope("all")} />
             <span className="w-px h-4 bg-wo-border mx-1" />
           </>
+        ) : (
+          <span className="text-[11px] text-wo-warning">Configure GitHub orgs in workspace settings</span>
         )}
         <FilterChip label="Drafts" active={showDrafts} count={draftCount} onClick={() => setShowDrafts(!showDrafts)} />
         {allRepos.length > 1 && (
@@ -197,7 +200,7 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
             <p className="text-sm text-wo-text-secondary">
               {tab === "reviews" ? "No pending review requests" : "No open pull requests"}
             </p>
-            {filterScope === "workspace" && wsOrg && (
+            {filterScope === "workspace" && hasOrgConfig && (
               <button type="button" onClick={() => setFilterScope("all")} className="mt-2 text-xs text-wo-accent hover:text-wo-accent-hover transition-colors">
                 Show all orgs
               </button>

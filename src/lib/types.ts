@@ -3,6 +3,7 @@ export interface Workspace {
   name: string;
   org: string;
   path: string;
+  githubOrgs: string[];
   createdAt: string;
 }
 

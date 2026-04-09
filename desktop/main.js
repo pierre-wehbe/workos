@@ -180,6 +180,8 @@ app.whenReady().then(() => {
   github.init(mainWindow);
   ipcMain.handle("github:fetch", () => github.fetchAll());
   ipcMain.handle("github:cache", () => github.getCache());
+  ipcMain.handle("github:user-orgs", () => github.getUserOrgs());
+  ipcMain.handle("db:update-workspace", (_e, id, data) => db.updateWorkspace(id, data));
   ipcMain.handle("github:check", () => github.checkGhInstalled());
 
   // --- Processes ---

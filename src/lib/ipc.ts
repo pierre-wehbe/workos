@@ -57,5 +57,7 @@ export const ipc = {
   githubFetch: () => api.githubFetch(),
   githubCache: () => api.githubCache(),
   githubCheck: () => api.githubCheck(),
+  githubUserOrgs: () => api.githubUserOrgs(),
+  updateWorkspace: (id: string, data: Parameters<typeof api.updateWorkspace>[1]) => api.updateWorkspace(id, data),
   onGithubUpdate: (cb: (data: import("./types").GitHubData) => void) => api.onGithubUpdate(cb),
 } as const;

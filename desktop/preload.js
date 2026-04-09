@@ -74,6 +74,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   githubFetch: () => ipcRenderer.invoke("github:fetch"),
   githubCache: () => ipcRenderer.invoke("github:cache"),
   githubCheck: () => ipcRenderer.invoke("github:check"),
+  githubUserOrgs: () => ipcRenderer.invoke("github:user-orgs"),
+  updateWorkspace: (id, data) => ipcRenderer.invoke("db:update-workspace", id, data),
   onGithubUpdate: (cb) => {
     const handler = (_e, d) => cb(d);
     ipcRenderer.on("github:update", handler);

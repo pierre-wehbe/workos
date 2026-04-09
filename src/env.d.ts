@@ -98,6 +98,8 @@ interface ElectronAPI {
   githubFetch: () => Promise<import("./lib/types").GitHubData>;
   githubCache: () => Promise<import("./lib/types").GitHubData>;
   githubCheck: () => Promise<{ installed: boolean; authenticated: boolean; username: string | null }>;
+  githubUserOrgs: () => Promise<string[]>;
+  updateWorkspace: (id: string, data: { githubOrgs?: string[]; name?: string; org?: string }) => Promise<import("./lib/types").Workspace>;
   onGithubUpdate: (cb: (data: import("./lib/types").GitHubData) => void) => () => void;
 }
 

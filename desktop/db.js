@@ -62,6 +62,10 @@ function init(app) {
   if (!cols.includes("pinned")) {
     db.exec("ALTER TABLE projects ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
   }
+  const wsCols = db.prepare("PRAGMA table_info(workspaces)").all().map((c) => c.name);
+  if (!wsCols.includes("github_orgs")) {
+    db.exec("ALTER TABLE workspaces ADD COLUMN github_orgs TEXT DEFAULT ''");
+  }
 
   return db;
 }
@@ -95,6 +99,7 @@ function rowToWorkspace(row) {
     name: row.name,
     org: row.org,
     path: row.path,
+    githubOrgs: row.github_orgs ? row.github_orgs.split(",").filter(Boolean) : [],
     createdAt: row.created_at,
   };
 }
@@ -111,6 +116,16 @@ function createWorkspace({ name, org, path: wsPath }) {
 
 function deleteWorkspace(id) {
   db.prepare("DELETE FROM workspaces WHERE id = ?").run(id);
+}
+
+function updateWorkspace(id, fields) {
+  if ("githubOrgs" in fields) {
+    const orgsStr = Array.isArray(fields.githubOrgs) ? fields.githubOrgs.join(",") : "";
+    db.prepare("UPDATE workspaces SET github_orgs = ? WHERE id = ?").run(orgsStr, id);
+  }
+  if ("name" in fields) db.prepare("UPDATE workspaces SET name = ? WHERE id = ?").run(fields.name, id);
+  if ("org" in fields) db.prepare("UPDATE workspaces SET org = ? WHERE id = ?").run(fields.org, id);
+  return rowToWorkspace(db.prepare("SELECT * FROM workspaces WHERE id = ?").get(id));
 }
 
 function getActiveWorkspace() {
@@ -270,7 +285,7 @@ function importConfig(json) {
 
 module.exports = {
   init, getMeta, setMeta, getSetupComplete, setSetupComplete,
-  getWorkspaces, createWorkspace, deleteWorkspace, getActiveWorkspace, setActiveWorkspace,
+  getWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, getActiveWorkspace, setActiveWorkspace,
   getProjects, createProject, updateProject, getProjectById, deleteProject,
   exportConfig, importConfig,
   getTools, createTool, deleteTool, updateTool,
