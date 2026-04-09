@@ -1,11 +1,15 @@
 ---
-name: Electron ESM incompatibility
-description: Node 22 breaks require("electron") in ESM projects — use CJS for all Electron main/preload files
+name: Electron launch requirements
+description: ELECTRON_RUN_AS_NODE=1 breaks Electron — must unset in scripts. Also use CJS for main/preload.
 type: feedback
 ---
 
-Never use ESM (`import`) in Electron main process or preload files. Node 22 + Electron has a known issue where `require("electron")` resolves to the npm package (binary path string) instead of the built-in Electron module. Also, naming the electron files directory `electron/` shadows the built-in module.
+**Critical: `ELECTRON_RUN_AS_NODE=1`** is set by Claude Code / VS Code terminal. This tells Electron to act as plain Node.js, disabling all Electron APIs (`require("electron")` returns undefined). All scripts that launch Electron must explicitly unset it: `ELECTRON_RUN_AS_NODE= electron ...`
 
-**Why:** Spent significant time debugging black screen caused by ESM imports in Electron files. The `"type": "module"` in package.json combined with `import { app } from "electron"` causes a crash.
+**Why:** Spent hours debugging what appeared to be ESM/CJS/Node 22 incompatibility — was actually this one env var the whole time.
 
-**How to apply:** Always use CommonJS (`require`) for Electron main process and preload files. Use `.cjs` extension or remove `"type": "module"` from package.json. Never name the Electron files directory `electron/` — use `desktop/` or similar. Vite/React source files can still use ESM since they're bundled by Vite.
+**How to apply:**
+- In package.json scripts: `"dev": "... ELECTRON_RUN_AS_NODE= electron desktop/main.js"`
+- Use CJS (`require`/`module.exports`) for all `desktop/` files — preload MUST be CJS regardless
+- Name the directory `desktop/` not `electron/` to avoid shadowing the built-in module
+- Don't add `"type": "module"` to package.json
