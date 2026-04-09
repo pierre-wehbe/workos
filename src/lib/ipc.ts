@@ -39,4 +39,13 @@ export const ipc = {
   deleteTool: (id: string) => api.deleteTool(id),
   updateTool: (id: string, data: Parameters<typeof api.updateTool>[1]) => api.updateTool(id, data),
   discoverScripts: (projectPath: string) => api.discoverScripts(projectPath),
+  startProcess: (data: Parameters<typeof api.startProcess>[0]) => api.startProcess(data),
+  stopProcess: (id: string) => api.stopProcess(id),
+  listProcesses: () => api.listProcesses(),
+  clearProcess: (id: string) => api.clearProcess(id),
+  clearAllStopped: () => api.clearAllStopped(),
+  getProcessLogs: (id: string) => api.getProcessLogs(id),
+  getRunningCount: () => api.getRunningCount(),
+  onProcessUpdate: (cb: (entry: import("./types").ProcessEntry) => void) => api.onProcessUpdate(cb),
+  onProcessOutput: (cb: (id: string, chunk: string) => void) => api.onProcessOutput(cb),
 } as const;

@@ -62,6 +62,20 @@ interface ElectronAPI {
     name: string; command: string | null; workingDir: string;
     source: string; sourceKey: string;
   }>>;
+
+  // Processes
+  startProcess: (data: {
+    projectId: string; projectName: string; workspaceId: string;
+    workspaceName: string; toolName: string; command: string; workingDir?: string;
+  }) => Promise<import("./lib/types").ProcessEntry>;
+  stopProcess: (id: string) => Promise<void>;
+  listProcesses: () => Promise<import("./lib/types").ProcessEntry[]>;
+  clearProcess: (id: string) => Promise<void>;
+  clearAllStopped: () => Promise<void>;
+  getProcessLogs: (id: string) => Promise<string>;
+  getRunningCount: () => Promise<number>;
+  onProcessUpdate: (cb: (entry: import("./lib/types").ProcessEntry) => void) => () => void;
+  onProcessOutput: (cb: (id: string, chunk: string) => void) => () => void;
 }
 
 declare global {

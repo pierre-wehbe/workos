@@ -6,6 +6,7 @@ const { loadShellEnvironment } = require("./shell-env.js");
 const db = require("./db.js");
 const { runSync, runStreaming, cancelProcess, killAll } = require("./executor.js");
 const { checkForUpdate } = require("./updater.js");
+const processes = require("./processes.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow = null;
@@ -166,9 +167,19 @@ app.whenReady().then(() => {
   ipcMain.handle("db:delete-tool", (_e, id) => db.deleteTool(id));
   ipcMain.handle("db:update-tool", (_e, id, data) => db.updateTool(id, data));
 
+  // --- Processes ---
+  ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));
+  ipcMain.handle("process:stop", (_e, id) => processes.stopProcess(id));
+  ipcMain.handle("process:list", () => processes.listProcesses());
+  ipcMain.handle("process:clear", (_e, id) => processes.clearProcess(id));
+  ipcMain.handle("process:clear-all-stopped", () => processes.clearAllStopped());
+  ipcMain.handle("process:logs", (_e, id) => processes.getProcessLogs(id));
+  ipcMain.handle("process:running-count", () => processes.getRunningCount());
+
   createWindow();
+  processes.init(app, mainWindow);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on("before-quit", () => { killAll(); });
+app.on("before-quit", () => { killAll(); processes.killAll(); });
 app.on("window-all-closed", () => { app.quit(); });

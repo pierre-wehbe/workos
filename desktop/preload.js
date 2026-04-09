@@ -62,4 +62,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteTool: (id) => ipcRenderer.invoke("db:delete-tool", id),
   updateTool: (id, data) => ipcRenderer.invoke("db:update-tool", id, data),
   discoverScripts: (projectPath) => ipcRenderer.invoke("shell:discover-scripts", projectPath),
+
+  // Processes
+  startProcess: (data) => ipcRenderer.invoke("process:start", data),
+  stopProcess: (id) => ipcRenderer.invoke("process:stop", id),
+  listProcesses: () => ipcRenderer.invoke("process:list"),
+  clearProcess: (id) => ipcRenderer.invoke("process:clear", id),
+  clearAllStopped: () => ipcRenderer.invoke("process:clear-all-stopped"),
+  getProcessLogs: (id) => ipcRenderer.invoke("process:logs", id),
+  getRunningCount: () => ipcRenderer.invoke("process:running-count"),
+  onProcessUpdate: (cb) => {
+    const handler = (_e, d) => cb(d);
+    ipcRenderer.on("process:on-update", handler);
+    return () => ipcRenderer.removeListener("process:on-update", handler);
+  },
+  onProcessOutput: (cb) => {
+    const handler = (_e, d) => cb(d.id, d.chunk);
+    ipcRenderer.on("process:on-output", handler);
+    return () => ipcRenderer.removeListener("process:on-output", handler);
+  },
 });

@@ -47,3 +47,20 @@ export interface Tool {
   pinned: boolean;
   createdAt: string;
 }
+
+export interface ProcessEntry {
+  id: string;
+  projectId: string;
+  projectName: string;
+  workspaceId: string;
+  workspaceName: string;
+  toolName: string;
+  command: string;
+  pid: number;
+  status: "running" | "stopped" | "errored";
+  exitCode: number | null;
+  port: number | null;
+  startedAt: string;
+  stoppedAt: string | null;
+  logFile: string;
+}
