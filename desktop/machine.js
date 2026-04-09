@@ -31,26 +31,27 @@ const ZPROFILE = path.join(HOME, ".zprofile");
 
 async function detectHomebrew() {
   const version = await run("brew --version");
-  if (!version) return { installed: false, version: null, path: null, shellConfigured: false, outdatedCount: 0 };
+  if (!version) return { installed: false, version: null, path: null, shellConfigured: false, outdatedCount: null };
 
   const brewPath = await run("command -v brew");
   const shellOk = shellFileContains(ZPROFILE, "brew shellenv");
 
-  // Get outdated count without triggering auto-update
-  let outdatedCount = 0;
-  const outdatedRaw = await run("brew outdated --json=v2");
-  try {
-    const parsed = JSON.parse(outdatedRaw || "{}");
-    outdatedCount = (parsed.formulae?.length || 0) + (parsed.casks?.length || 0);
-  } catch {}
-
+  // Don't check outdated on scan — it's slow. User triggers manually.
   return {
     installed: true,
     version: version.split("\n")[0]?.replace("Homebrew ", "") ?? version,
     path: brewPath,
     shellConfigured: shellOk,
-    outdatedCount,
+    outdatedCount: null, // null = not checked yet
   };
+}
+
+async function checkBrewOutdated() {
+  const outdatedRaw = await run("brew outdated --json=v2");
+  try {
+    const parsed = JSON.parse(outdatedRaw || "{}");
+    return (parsed.formulae?.length || 0) + (parsed.casks?.length || 0);
+  } catch { return 0; }
 }
 
 // ─── Python (pyenv + poetry) ───
@@ -85,7 +86,7 @@ async function detectPython() {
     pyenv: {
       installed: pyenvInstalled,
       version: pyenvVersion?.replace("pyenv ", "") ?? null,
-      shellConfigured: shellFileContains(ZSHRC, "pyenv init"),
+      shellConfigured: shellFileContains(ZSHRC, "pyenv init") || shellFileContains(ZSHRC, "pyenv") || shellFileContains(ZPROFILE, "pyenv"),
       installedVersions,
       globalVersion,
       latestAvailable,
@@ -272,4 +273,9 @@ function fixShellConfig(file, line) {
   }
 }
 
-module.exports = { scanMachine, fixShellConfig };
+async function setPyenvGlobal(version) {
+  const result = await run(`pyenv global ${version}`);
+  return { ok: result !== null };
+}
+
+module.exports = { scanMachine, fixShellConfig, checkBrewOutdated, setPyenvGlobal };

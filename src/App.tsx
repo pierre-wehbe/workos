@@ -19,7 +19,7 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
   const [showProcessPanel, setShowProcessPanel] = useState(false);
-  const { projects: allProjects } = useProjects(activeWorkspace?.id ?? null);
+  const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
 
   useEffect(() => {
@@ -115,6 +115,7 @@ export default function App() {
                   runningProcessIds={runningProcessIds}
                   onStartProcess={handleStartProcess}
                   onStopProcess={handleStopProcess}
+                  onProjectsChanged={refreshProjects}
                 />
               ) : view === "settings" ? (
                 <SettingsPage

@@ -71,6 +71,8 @@ export function MachinePanel() {
   const [scanning, setScanning] = useState(false);
   const [runningCmd, setRunningCmd] = useState<string | null>(null);
   const [cmdOutput, setCmdOutput] = useState("");
+  const [brewOutdated, setBrewOutdated] = useState<number | null>(null);
+  const [checkingBrew, setCheckingBrew] = useState(false);
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -140,16 +142,28 @@ export function MachinePanel() {
           <Badge ok={info.homebrew.installed} label={info.homebrew.installed ? "Installed" : "Missing"} />
           <VersionTag version={info.homebrew.version} />
           <Badge ok={info.homebrew.shellConfigured} label={info.homebrew.shellConfigured ? "Shell OK" : "Shell missing"} />
-          {info.homebrew.outdatedCount > 0 && (
-            <span className="text-[10px] text-wo-warning font-medium">{info.homebrew.outdatedCount} outdated</span>
+          {brewOutdated !== null && brewOutdated > 0 && (
+            <span className="text-[10px] text-wo-warning font-medium">{brewOutdated} outdated</span>
+          )}
+          {brewOutdated !== null && brewOutdated === 0 && (
+            <span className="text-[10px] text-wo-success font-medium">All up to date</span>
           )}
         </div>
-        {!info.homebrew.installed && (
-          <ActionButton label="Install Homebrew" variant="accent" onClick={() => runCommand('/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"', "Installing Homebrew")} />
-        )}
-        {info.homebrew.installed && info.homebrew.outdatedCount > 0 && (
-          <ActionButton label="Upgrade all" onClick={() => runCommand("brew upgrade", "Upgrading")} />
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {!info.homebrew.installed && (
+            <ActionButton label="Install Homebrew" variant="accent" onClick={() => runCommand('/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"', "Installing Homebrew")} />
+          )}
+          {info.homebrew.installed && (
+            <ActionButton
+              label={checkingBrew ? "Checking..." : "Check for updates"}
+              loading={checkingBrew}
+              onClick={async () => { setCheckingBrew(true); const count = await ipc.checkBrewOutdated(); setBrewOutdated(count); setCheckingBrew(false); }}
+            />
+          )}
+          {brewOutdated !== null && brewOutdated > 0 && (
+            <ActionButton label="Upgrade all" onClick={() => runCommand("brew upgrade", "Upgrading")} />
+          )}
+        </div>
         {!info.homebrew.shellConfigured && (
           <button type="button" onClick={() => fixShell(".zprofile", 'eval "$(/opt/homebrew/bin/brew shellenv)"')} className="text-xs text-wo-accent hover:text-wo-accent-hover transition-colors">
             Fix: add shellenv to .zprofile
@@ -178,10 +192,24 @@ export function MachinePanel() {
         </div>
         {info.python.pyenv.installed && (
           <div>
-            <p className="text-xs font-medium text-wo-text-secondary mb-1.5">
-              Installed versions
-              {info.python.pyenv.globalVersion && <span className="ml-1 text-wo-text-tertiary">(global: {info.python.pyenv.globalVersion})</span>}
-            </p>
+            <div className="flex items-center gap-3 mb-2">
+              <p className="text-xs font-medium text-wo-text-secondary">Global version</p>
+              {info.python.pyenv.installedVersions.length > 0 && (
+                <select
+                  value={info.python.pyenv.globalVersion ?? ""}
+                  onChange={async (e) => {
+                    await ipc.setPyenvGlobal(e.target.value);
+                    await scan();
+                  }}
+                  className="h-7 px-2 rounded-md border border-wo-border bg-wo-bg text-xs font-mono text-wo-text focus:outline-none focus:ring-2 focus:ring-wo-accent/40"
+                >
+                  {info.python.pyenv.installedVersions.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <p className="text-xs font-medium text-wo-text-secondary mb-1.5">Installed versions</p>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {info.python.pyenv.installedVersions.map((v) => (
                 <span key={v} className={`px-2 py-0.5 rounded text-[11px] font-mono ${
@@ -220,7 +248,7 @@ export function MachinePanel() {
           )}
         </div>
         {info.python.systemPython && (
-          <p className="text-xs text-wo-text-tertiary">System Python: {info.python.systemPython}</p>
+          <p className="text-xs text-wo-text-tertiary">macOS system Python: {info.python.systemPython} (bundled by Apple, separate from pyenv)</p>
         )}
       </Section>
 

@@ -171,6 +171,8 @@ app.whenReady().then(() => {
   const machine = require("./machine.js");
   ipcMain.handle("machine:scan", () => machine.scanMachine());
   ipcMain.handle("machine:fix-shell", (_e, file, line) => machine.fixShellConfig(file, line));
+  ipcMain.handle("machine:brew-outdated", () => machine.checkBrewOutdated());
+  ipcMain.handle("machine:pyenv-global", (_e, version) => machine.setPyenvGlobal(version));
 
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));

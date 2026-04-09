@@ -72,7 +72,7 @@ export interface MachineInfo {
     version: string | null;
     path: string | null;
     shellConfigured: boolean;
-    outdatedCount: number;
+    outdatedCount: number | null;
   };
   python: {
     pyenv: {

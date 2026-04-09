@@ -51,4 +51,6 @@ export const ipc = {
   onProcessOutput: (cb: (id: string, chunk: string) => void) => api.onProcessOutput(cb),
   scanMachine: () => api.scanMachine(),
   fixShellConfig: (file: string, line: string) => api.fixShellConfig(file, line),
+  checkBrewOutdated: () => api.checkBrewOutdated(),
+  setPyenvGlobal: (version: string) => api.setPyenvGlobal(version),
 } as const;

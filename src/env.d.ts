@@ -81,6 +81,8 @@ interface ElectronAPI {
   // Machine
   scanMachine: () => Promise<import("./lib/types").MachineInfo>;
   fixShellConfig: (file: string, line: string) => Promise<{ ok: boolean; message: string }>;
+  checkBrewOutdated: () => Promise<number>;
+  setPyenvGlobal: (version: string) => Promise<{ ok: boolean }>;
 }
 
 declare global {
