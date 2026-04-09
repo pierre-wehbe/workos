@@ -175,9 +175,8 @@ app.whenReady().then(() => {
   ipcMain.handle("machine:pyenv-global", (_e, version) => machine.setPyenvGlobal(version));
   ipcMain.handle("machine:check-updates", () => machine.checkUpdates());
 
-  // --- GitHub ---
+  // --- GitHub --- (init after createWindow below)
   const github = require("./github.js");
-  github.init(mainWindow);
   ipcMain.handle("github:fetch", () => github.fetchAll());
   ipcMain.handle("github:cache", () => github.getCache());
   ipcMain.handle("github:user-orgs", () => github.getUserOrgs());
@@ -196,6 +195,7 @@ app.whenReady().then(() => {
 
   createWindow();
   processes.init(app, mainWindow);
+  github.init(mainWindow);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
