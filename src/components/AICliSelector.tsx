@@ -56,12 +56,32 @@ export function AICliSelector({ selectedCli, onSelect }: AICliSelectorProps) {
     setOpen(false);
   };
 
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  // Clean up on unmount
+  useEffect(() => () => stopPolling(), []);
+
   const handleLogin = async (cli: AICli) => {
     setLoggingIn(cli);
-    await ipc.runSync(`${cli} auth login`);
-    const status = await ipc.getAIStatus(cli);
-    setStatuses((prev) => ({ ...prev, [cli]: status }));
-    setLoggingIn(null);
+    // Fire and forget — opens browser
+    ipc.runSync(`${cli} auth login`);
+
+    // Poll every 5s for up to 2 minutes
+    let attempts = 0;
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      const status = await ipc.getAIStatus(cli);
+      setStatuses((prev) => ({ ...prev, [cli]: status }));
+      if (status.authenticated || attempts >= 24) {
+        stopPolling();
+        setLoggingIn(null);
+      }
+    }, 5000);
   };
 
   const current = CLI_CONFIG[selectedCli];
