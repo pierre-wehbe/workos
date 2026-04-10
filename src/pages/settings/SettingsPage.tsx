@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { ArrowUpDown, Cpu, Database, FolderOpen, Shield } from "lucide-react";
+import { ArrowUpDown, ClipboardCheck, Cpu, Database, FolderOpen, Shield } from "lucide-react";
 import type { Workspace } from "../../lib/types";
 import { PrerequisitePanel } from "./PrerequisitePanel";
 import { MachinePanel } from "./MachinePanel";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { ExportImportPanel } from "./ExportImportPanel";
 import { DataControlPanel } from "./DataControlPanel";
+import { RubricEditor } from "./RubricEditor";
 
 const tabs = [
   { id: "workspaces", label: "Workspaces", icon: FolderOpen },
   { id: "machine", label: "Machine", icon: Cpu },
+  { id: "rubric", label: "Review Rubric", icon: ClipboardCheck },
   { id: "prerequisites", label: "Prerequisites", icon: Shield },
   { id: "export", label: "Export / Import", icon: ArrowUpDown },
   { id: "data", label: "Data Control", icon: Database },
@@ -49,6 +51,7 @@ export function SettingsPage({ workspaces, activeWorkspace, onSwitchWorkspace, o
       </nav>
       <div className="flex-1 overflow-y-auto p-6">
         {activeTab === "machine" && <MachinePanel />}
+        {activeTab === "rubric" && <RubricEditor />}
         {activeTab === "prerequisites" && <PrerequisitePanel />}
         {activeTab === "workspaces" && (
           <WorkspacePanel workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={onSwitchWorkspace} onRefresh={onRefresh} />
