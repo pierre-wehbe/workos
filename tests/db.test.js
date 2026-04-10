@@ -20,10 +20,11 @@ describe("PR Cache", () => {
     expect(dbModule.getPrCache("nonexistent")).toBeNull();
   });
 
-  it("inserts and retrieves a PR cache entry", () => {
+  it("inserts and retrieves a PR cache entry with analyses", () => {
+    const analyses = [{ headSha: "abc123", timestamp: "2026-01-01T00:00:00Z", summary: "Test summary", rubricResult: null, cli: "codex" }];
     dbModule.upsertPrCache("owner/repo#1", {
       prData: { title: "Test PR" },
-      summary: "This is a plain text summary",
+      analyses,
       prState: "OPEN",
       headSha: "abc123",
       lastFetchedAt: "2026-01-01T00:00:00Z",
@@ -32,25 +33,30 @@ describe("PR Cache", () => {
     expect(cached).not.toBeNull();
     expect(cached.prId).toBe("owner/repo#1");
     expect(cached.prData).toEqual({ title: "Test PR" });
-    expect(cached.summary).toBe("This is a plain text summary");
+    expect(cached.analyses).toHaveLength(1);
+    expect(cached.analyses[0].summary).toBe("Test summary");
     expect(cached.prState).toBe("OPEN");
     expect(cached.headSha).toBe("abc123");
   });
 
-  it("updates an existing PR cache entry", () => {
-    dbModule.upsertPrCache("owner/repo#2", { prState: "OPEN" });
-    dbModule.upsertPrCache("owner/repo#2", { summary: "Updated summary", lastAnalyzedAt: "2026-01-02T00:00:00Z" });
-    const cached = dbModule.getPrCache("owner/repo#2");
-    expect(cached.summary).toBe("Updated summary");
-    expect(cached.lastAnalyzedAt).toBe("2026-01-02T00:00:00Z");
-    expect(cached.prState).toBe("OPEN");
+  it("updates analyses array on existing entry", () => {
+    dbModule.upsertPrCache("owner/repo#2", { prState: "OPEN", analyses: [] });
+    const v1 = [{ headSha: "sha1", timestamp: "2026-01-01T00:00:00Z", summary: "First analysis", rubricResult: null, cli: "codex" }];
+    dbModule.upsertPrCache("owner/repo#2", { analyses: v1, lastAnalyzedAt: "2026-01-01T00:00:00Z" });
+    const cached1 = dbModule.getPrCache("owner/repo#2");
+    expect(cached1.analyses).toHaveLength(1);
+
+    const v2 = [...v1, { headSha: "sha2", timestamp: "2026-01-02T00:00:00Z", summary: "Second analysis", rubricResult: { overallScore: 80, categories: [] }, cli: "claude" }];
+    dbModule.upsertPrCache("owner/repo#2", { analyses: v2, lastAnalyzedAt: "2026-01-02T00:00:00Z" });
+    const cached2 = dbModule.getPrCache("owner/repo#2");
+    expect(cached2.analyses).toHaveLength(2);
+    expect(cached2.analyses[1].rubricResult.overallScore).toBe(80);
   });
 
-  it("stores rubricResult as JSON and retrieves as object", () => {
-    const rubric = { overallScore: 87, categories: [{ name: "Code Clarity", score: 9, maxScore: 10, explanation: "Clean" }] };
-    dbModule.upsertPrCache("owner/repo#3", { rubricResult: rubric });
+  it("returns empty analyses array for new entries", () => {
+    dbModule.upsertPrCache("owner/repo#3", { prState: "OPEN" });
     const cached = dbModule.getPrCache("owner/repo#3");
-    expect(cached.rubricResult).toEqual(rubric);
+    expect(cached.analyses).toEqual([]);
   });
 
   it("cleanupPrCache removes MERGED/CLOSED entries", () => {

@@ -50,11 +50,18 @@ export interface PRReview {
   createdAt: string;
 }
 
+export interface AnalysisEntry {
+  headSha: string;
+  timestamp: string;
+  summary: string;
+  rubricResult: RubricResult | null;
+  cli: string;
+}
+
 export interface PRCacheEntry {
   prId: string;
   prData: PRDetail | null;
-  summary: string | null;
-  rubricResult: RubricResult | null;
+  analyses: AnalysisEntry[];
   commentThreads: PRReviewThread[] | null;
   lastFetchedAt: string | null;
   lastAnalyzedAt: string | null;

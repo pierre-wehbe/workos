@@ -11,65 +11,53 @@ function initFreshDb() {
   return tmpDir;
 }
 
-describe("Agent result → PR cache round-trip", () => {
+describe("Agent result → PR cache round-trip (analyses array)", () => {
   beforeEach(() => initFreshDb());
 
-  it("agent result string can be stored in pr_cache as summary", () => {
+  it("stores analysis entries as an array in pr_cache", () => {
     const prId = "owner/repo#123";
-    const agentOutput = "This PR adds webhook retry logic with exponential backoff.\n\nScores:\n- Code Clarity: 8/10\n- Test Coverage: 6/10";
+    const agentOutput = "**Summary**\nThis PR adds webhook retry.\n\n**Scores**\n- Code: 8/10";
 
-    // 1. Create PR cache entry (happens when PR detail is fetched)
+    // 1. Create PR cache entry
     db.upsertPrCache(prId, { prState: "OPEN", headSha: "abc123" });
 
-    // 2. Create agent task (happens when analysis is triggered)
-    const task = db.createAgentTask({ id: "agent-1", prId, taskType: "summarize", cli: "codex" });
-    expect(task.status).toBe("pending");
+    // 2. Append first analysis
+    const entry1 = { headSha: "abc123", timestamp: "2026-01-01T12:00:00Z", summary: agentOutput, rubricResult: { overallScore: 75, categories: [] }, cli: "codex" };
+    db.upsertPrCache(prId, { analyses: [entry1], lastAnalyzedAt: entry1.timestamp });
 
-    // 3. Agent completes — result is stored as plain string
-    db.updateAgentTask("agent-1", {
-      status: "completed",
-      result: agentOutput,
-      tokenEstimate: 1234,
-      completedAt: new Date().toISOString(),
-    });
+    const cached1 = db.getPrCache(prId);
+    expect(cached1.analyses).toHaveLength(1);
+    expect(cached1.analyses[0].summary).toBe(agentOutput);
+    expect(cached1.analyses[0].rubricResult.overallScore).toBe(75);
+    expect(cached1.analyses[0].cli).toBe("codex");
 
-    // 4. Verify agent task has the result
-    const completedTask = db.getAgentTask("agent-1");
-    expect(completedTask.status).toBe("completed");
-    expect(completedTask.result).toBe(agentOutput);
-    // Must be the exact string, not JSON-encoded
-    expect(completedTask.result).not.toContain('"This PR');
+    // 3. Append second analysis (re-analyze after new commits)
+    const entry2 = { headSha: "def456", timestamp: "2026-01-02T12:00:00Z", summary: "Improved PR after feedback.", rubricResult: { overallScore: 87, categories: [] }, cli: "claude" };
+    db.upsertPrCache(prId, { analyses: [entry1, entry2], lastAnalyzedAt: entry2.timestamp });
 
-    // 5. Write agent result to PR cache as summary (this is what the frontend should do)
-    db.upsertPrCache(prId, {
-      summary: agentOutput,
-      lastAnalyzedAt: new Date().toISOString(),
-    });
-
-    // 6. Read PR cache and verify summary is there
-    const cached = db.getPrCache(prId);
-    expect(cached.summary).toBe(agentOutput);
-    expect(cached.summary).not.toBeNull();
-    expect(cached.lastAnalyzedAt).not.toBeNull();
-    // Must be plain text, not JSON-encoded
-    expect(cached.summary[0]).not.toBe('"');
+    const cached2 = db.getPrCache(prId);
+    expect(cached2.analyses).toHaveLength(2);
+    expect(cached2.analyses[0].rubricResult.overallScore).toBe(75);
+    expect(cached2.analyses[1].rubricResult.overallScore).toBe(87);
   });
 
-  it("pr_cache summary survives app restart (re-init)", () => {
+  it("analyses array survives app restart", () => {
     const prId = "owner/repo#456";
-    const summary = "This is a PR summary that should persist.";
+    const analyses = [
+      { headSha: "sha1", timestamp: "2026-01-01T00:00:00Z", summary: "First review", rubricResult: null, cli: "codex" },
+      { headSha: "sha2", timestamp: "2026-01-02T00:00:00Z", summary: "Second review", rubricResult: { overallScore: 80, categories: [] }, cli: "claude" },
+    ];
 
-    db.upsertPrCache(prId, { summary, prState: "OPEN", lastAnalyzedAt: "2026-01-01T00:00:00Z" });
+    db.upsertPrCache(prId, { analyses, prState: "OPEN", lastAnalyzedAt: analyses[1].timestamp });
 
-    // Verify it's there
     const cached = db.getPrCache(prId);
-    expect(cached.summary).toBe(summary);
+    expect(cached.analyses).toHaveLength(2);
+    expect(cached.analyses[1].summary).toBe("Second review");
   });
 
-  it("upsertPrCache updates summary on existing entry without losing other fields", () => {
+  it("updating analyses preserves other fields", () => {
     const prId = "owner/repo#789";
 
-    // Initial insert with PR data
     db.upsertPrCache(prId, {
       prData: { title: "Test PR", author: "alice" },
       prState: "OPEN",
@@ -77,19 +65,19 @@ describe("Agent result → PR cache round-trip", () => {
       lastFetchedAt: "2026-01-01T00:00:00Z",
     });
 
-    // Update just the summary
-    db.upsertPrCache(prId, {
-      summary: "New summary text",
-      lastAnalyzedAt: "2026-01-02T00:00:00Z",
-    });
+    const analyses = [{ headSha: "sha1", timestamp: "2026-01-02T00:00:00Z", summary: "Analysis text", rubricResult: null, cli: "codex" }];
+    db.upsertPrCache(prId, { analyses, lastAnalyzedAt: analyses[0].timestamp });
 
     const cached = db.getPrCache(prId);
-    // Summary was updated
-    expect(cached.summary).toBe("New summary text");
-    expect(cached.lastAnalyzedAt).toBe("2026-01-02T00:00:00Z");
-    // Other fields preserved
+    expect(cached.analyses).toHaveLength(1);
     expect(cached.prData).toEqual({ title: "Test PR", author: "alice" });
     expect(cached.prState).toBe("OPEN");
     expect(cached.headSha).toBe("sha1");
+  });
+
+  it("new entries default to empty analyses array", () => {
+    db.upsertPrCache("owner/repo#999", { prState: "OPEN" });
+    const cached = db.getPrCache("owner/repo#999");
+    expect(cached.analyses).toEqual([]);
   });
 });

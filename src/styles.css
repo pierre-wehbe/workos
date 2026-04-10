@@ -71,3 +71,68 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--wo-text-tertiary) transparent;
 }
+
+/* Markdown prose styling for agent output */
+.prose-sm, .prose-xs {
+  color: var(--wo-text-secondary);
+  line-height: 1.7;
+}
+.prose-sm { font-size: 0.875rem; }
+.prose-xs { font-size: 0.75rem; }
+.prose-sm h1, .prose-sm h2, .prose-sm h3, .prose-sm h4,
+.prose-xs h1, .prose-xs h2, .prose-xs h3, .prose-xs h4 {
+  color: var(--wo-text);
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+.prose-sm h1 { font-size: 1.25rem; }
+.prose-sm h2 { font-size: 1.1rem; }
+.prose-sm h3 { font-size: 0.95rem; }
+.prose-sm p, .prose-xs p { margin: 0.5em 0; }
+.prose-sm ul, .prose-sm ol, .prose-xs ul, .prose-xs ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.prose-sm li, .prose-xs li { margin: 0.15em 0; }
+.prose-sm code, .prose-xs code {
+  background: var(--wo-bg-subtle);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+}
+.prose-sm pre, .prose-xs pre {
+  background: var(--wo-bg-subtle);
+  padding: 0.75em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-sm pre code, .prose-xs pre code {
+  background: none;
+  padding: 0;
+}
+.prose-sm table, .prose-xs table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+}
+.prose-sm th, .prose-sm td, .prose-xs th, .prose-xs td {
+  border: 1px solid var(--wo-border);
+  padding: 0.4em 0.75em;
+  text-align: left;
+}
+.prose-sm th, .prose-xs th {
+  background: var(--wo-bg-subtle);
+  font-weight: 600;
+  color: var(--wo-text);
+}
+.prose-sm strong, .prose-xs strong { color: var(--wo-text); font-weight: 600; }
+.prose-sm a, .prose-xs a { color: var(--wo-accent); text-decoration: underline; }
+.prose-sm blockquote, .prose-xs blockquote {
+  border-left: 3px solid var(--wo-accent);
+  padding-left: 1em;
+  margin: 0.75em 0;
+  color: var(--wo-text-tertiary);
+}

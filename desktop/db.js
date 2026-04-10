@@ -58,8 +58,7 @@ function init(app) {
     CREATE TABLE IF NOT EXISTS pr_cache (
       pr_id TEXT PRIMARY KEY,
       pr_data TEXT,
-      summary TEXT,
-      rubric_result TEXT,
+      analyses TEXT DEFAULT '[]',
       comment_threads TEXT,
       last_fetched_at TEXT,
       last_analyzed_at TEXT,
@@ -95,6 +94,21 @@ function init(app) {
   const wsCols = db.prepare("PRAGMA table_info(workspaces)").all().map((c) => c.name);
   if (!wsCols.includes("github_orgs")) {
     db.exec("ALTER TABLE workspaces ADD COLUMN github_orgs TEXT DEFAULT ''");
+  }
+
+  // Migrate pr_cache: old schema had summary + rubric_result columns, new schema uses analyses JSON array
+  const prCacheCols = db.prepare("PRAGMA table_info(pr_cache)").all().map((c) => c.name);
+  if (prCacheCols.includes("summary") && !prCacheCols.includes("analyses")) {
+    db.exec("ALTER TABLE pr_cache ADD COLUMN analyses TEXT DEFAULT '[]'");
+    // Migrate existing data: convert summary + rubric_result into analyses array
+    const rows = db.prepare("SELECT pr_id, summary, rubric_result, head_sha, last_analyzed_at FROM pr_cache WHERE summary IS NOT NULL").all();
+    const update = db.prepare("UPDATE pr_cache SET analyses = ? WHERE pr_id = ?");
+    for (const row of rows) {
+      let rubric = null;
+      try { rubric = row.rubric_result ? JSON.parse(row.rubric_result) : null; } catch {}
+      const entry = { headSha: row.head_sha || "unknown", timestamp: row.last_analyzed_at || new Date().toISOString(), summary: row.summary, rubricResult: rubric, cli: "unknown" };
+      update.run(JSON.stringify([entry]), row.pr_id);
+    }
   }
 
   // Seed default rubric categories
@@ -303,11 +317,12 @@ function updateTool(id, fields) {
 
 // PR Cache
 function rowToPrCache(row) {
+  let analyses = [];
+  try { analyses = row.analyses ? JSON.parse(row.analyses) : []; } catch { analyses = []; }
   return {
     prId: row.pr_id,
     prData: row.pr_data ? JSON.parse(row.pr_data) : null,
-    summary: row.summary ?? null,
-    rubricResult: row.rubric_result ? JSON.parse(row.rubric_result) : null,
+    analyses,
     commentThreads: row.comment_threads ? JSON.parse(row.comment_threads) : null,
     lastFetchedAt: row.last_fetched_at,
     lastAnalyzedAt: row.last_analyzed_at,
@@ -325,12 +340,11 @@ function upsertPrCache(prId, fields) {
   const existing = db.prepare("SELECT * FROM pr_cache WHERE pr_id = ?").get(prId);
   if (!existing) {
     db.prepare(
-      "INSERT INTO pr_cache (pr_id, pr_data, summary, rubric_result, comment_threads, last_fetched_at, last_analyzed_at, pr_state, head_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO pr_cache (pr_id, pr_data, analyses, comment_threads, last_fetched_at, last_analyzed_at, pr_state, head_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     ).run(
       prId,
       fields.prData ? JSON.stringify(fields.prData) : null,
-      fields.summary ?? null,
-      fields.rubricResult ? JSON.stringify(fields.rubricResult) : null,
+      fields.analyses ? JSON.stringify(fields.analyses) : "[]",
       fields.commentThreads ? JSON.stringify(fields.commentThreads) : null,
       fields.lastFetchedAt || null,
       fields.lastAnalyzedAt || null,
@@ -339,11 +353,11 @@ function upsertPrCache(prId, fields) {
     );
   } else {
     const colMap = {
-      prData: "pr_data", summary: "summary", rubricResult: "rubric_result",
+      prData: "pr_data", analyses: "analyses",
       commentThreads: "comment_threads", lastFetchedAt: "last_fetched_at",
       lastAnalyzedAt: "last_analyzed_at", prState: "pr_state", headSha: "head_sha",
     };
-    const jsonCols = new Set(["prData", "rubricResult", "commentThreads"]);
+    const jsonCols = new Set(["prData", "analyses", "commentThreads"]);
     const sets = [];
     const values = [];
     for (const [key, col] of Object.entries(colMap)) {
