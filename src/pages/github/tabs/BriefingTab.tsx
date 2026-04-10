@@ -39,11 +39,23 @@ export function BriefingTab({
 
       processedTaskIds.current.add(task.id);
       setAnalyzing(false);
+
+      // Extract rubric JSON if present
+      const rubricMatch = task.result.match(/<!-- RUBRIC_JSON\s+(\{[\s\S]*?\})\s*-->/);
+      let rubricResult = null;
+      if (rubricMatch) {
+        try { rubricResult = JSON.parse(rubricMatch[1]); } catch {}
+      }
+
+      // Strip the JSON block from the displayed summary
+      const summary = task.result.replace(/<!-- RUBRIC_JSON\s+\{[\s\S]*?\}\s*-->/, "").trim();
+
       onUpdateCache(prId, {
-        summary: task.result,
+        summary,
+        rubricResult,
         lastAnalyzedAt: task.completedAt ?? new Date().toISOString(),
       });
-      break; // process one at a time
+      break;
     }
   }, [agentTasks, prId, onUpdateCache]);
 
@@ -71,9 +83,9 @@ export function BriefingTab({
     setAnalyzing(true);
     const fileList = prDetail?.files?.map((f) => `  ${f.path} (+${f.additions} -${f.deletions})`).join("\n") ?? "";
     const rubricSection = rubricCategories.length > 0
-      ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}\n\nProvide a weighted overall score out of 100.`
+      ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}`
       : "";
-    const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}`;
+    const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}\n\nIMPORTANT: At the very end of your response, include this exact JSON block so it can be parsed programmatically:\n<!-- RUBRIC_JSON {"overallScore": <number 0-100>, "categories": [{"name": "<category name>", "score": <1-10>, "maxScore": 10, "explanation": "<1 sentence>"}]} -->`;
     await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
   };
 

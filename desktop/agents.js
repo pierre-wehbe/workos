@@ -9,6 +9,34 @@ const registry = new Map();
 let logsDir = null;
 let mainWindow = null;
 
+// Strip ANSI escape codes and extract clean content from CLI output.
+// Codex output has a session header, tool-call logs, and ANSI formatting.
+// We extract the last substantial text block (the actual response).
+function cleanAgentOutput(raw) {
+  // Strip ANSI escape sequences
+  const stripped = raw.replace(/\x1b\[[0-9;]*m/g, "");
+
+  // For codex: the final output is duplicated at the end after "tokens used\nN\n"
+  // Try to find that marker and take everything after it
+  const tokenMarker = /tokens used\s*\n\s*[\d,]+\s*\n/;
+  const tokenMatch = stripped.match(tokenMarker);
+  if (tokenMatch) {
+    const afterTokens = stripped.slice(tokenMatch.index + tokenMatch[0].length).trim();
+    if (afterTokens.length > 50) return afterTokens;
+  }
+
+  // For claude/gemini: output is cleaner, just strip ANSI
+  // Try to find the substantive content by skipping header lines
+  const lines = stripped.split("\n");
+  // Skip lines that look like CLI boilerplate
+  const contentStart = lines.findIndex((l) =>
+    l.startsWith("**") || l.startsWith("##") || l.startsWith("This PR") || l.startsWith("Summary")
+  );
+  if (contentStart > 0) return lines.slice(contentStart).join("\n").trim();
+
+  return stripped.trim();
+}
+
 // Returns { args, stdin } — stdin is non-null when the prompt should be piped
 function cliCommand(cli, prompt) {
   if (cli === "claude") return { args: ["-p", prompt, "--output-format", "text"], stdin: null };
@@ -92,7 +120,7 @@ function startTask({ prId, taskType, cli, prompt, workingDir }) {
     entry.status = code === 0 ? "completed" : "failed";
     entry.completedAt = new Date().toISOString();
     entry.tokenEstimate = Math.round(output.length / 4);
-    entry.result = output;
+    entry.result = cleanAgentOutput(output);
     logStream.end();
 
     db.updateAgentTask(id, {
