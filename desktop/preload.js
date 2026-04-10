@@ -86,6 +86,45 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("github:update", handler);
   },
 
+  // PR Detail
+  fetchPRDetail: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-detail", owner, repo, number),
+  postPRComment: (owner, repo, number, body) => ipcRenderer.invoke("pr:post-comment", owner, repo, number, body),
+  replyToThread: (owner, repo, number, commentId, body) => ipcRenderer.invoke("pr:reply-to-thread", owner, repo, number, commentId, body),
+  submitReview: (owner, repo, number, event, body) => ipcRenderer.invoke("pr:submit-review", owner, repo, number, event, body),
+  resolveThread: (owner, repo, number, threadId) => ipcRenderer.invoke("pr:resolve-thread", owner, repo, number, threadId),
+
+  // Agents
+  startAgent: (data) => ipcRenderer.invoke("agent:start", data),
+  cancelAgent: (id) => ipcRenderer.invoke("agent:cancel", id),
+  listAgents: () => ipcRenderer.invoke("agent:list"),
+  getAgentLogs: (id) => ipcRenderer.invoke("agent:logs", id),
+  clearAgent: (id) => ipcRenderer.invoke("agent:clear", id),
+  clearAllCompletedAgents: () => ipcRenderer.invoke("agent:clear-all-completed"),
+  getAgentRunningCount: () => ipcRenderer.invoke("agent:running-count"),
+  createWorktree: (repoPath, branch) => ipcRenderer.invoke("agent:create-worktree", repoPath, branch),
+  removeWorktree: (repoPath, worktreePath) => ipcRenderer.invoke("agent:remove-worktree", repoPath, worktreePath),
+  onAgentUpdate: (cb) => {
+    const handler = (_e, d) => cb(d);
+    ipcRenderer.on("agent-task:update", handler);
+    return () => ipcRenderer.removeListener("agent-task:update", handler);
+  },
+  onAgentOutput: (cb) => {
+    const handler = (_e, d) => cb(d.id, d.chunk);
+    ipcRenderer.on("agent-task:output", handler);
+    return () => ipcRenderer.removeListener("agent-task:output", handler);
+  },
+
+  // Rubric
+  getRubricCategories: () => ipcRenderer.invoke("rubric:get-categories"),
+  saveRubricCategories: (categories) => ipcRenderer.invoke("rubric:save-categories", categories),
+  getRubricThresholds: () => ipcRenderer.invoke("rubric:get-thresholds"),
+  saveRubricThresholds: (thresholds) => ipcRenderer.invoke("rubric:save-thresholds", thresholds),
+
+  // PR Cache
+  getPrCache: (prId) => ipcRenderer.invoke("pr-cache:get", prId),
+  upsertPrCache: (prId, fields) => ipcRenderer.invoke("pr-cache:upsert", prId, fields),
+  cleanupPrCache: () => ipcRenderer.invoke("pr-cache:cleanup"),
+
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),
   stopProcess: (id) => ipcRenderer.invoke("process:stop", id),

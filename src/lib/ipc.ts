@@ -62,4 +62,31 @@ export const ipc = {
   githubUserOrgs: () => api.githubUserOrgs(),
   updateWorkspace: (id: string, data: Parameters<typeof api.updateWorkspace>[1]) => api.updateWorkspace(id, data),
   onGithubUpdate: (cb: (data: import("./types").GitHubData) => void) => api.onGithubUpdate(cb),
+  // PR Detail
+  fetchPRDetail: (owner: string, repo: string, number: number) => api.fetchPRDetail(owner, repo, number),
+  postPRComment: (owner: string, repo: string, number: number, body: string) => api.postPRComment(owner, repo, number, body),
+  replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => api.replyToThread(owner, repo, number, commentId, body),
+  submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => api.submitReview(owner, repo, number, event, body),
+  resolveThread: (owner: string, repo: string, number: number, threadId: string) => api.resolveThread(owner, repo, number, threadId),
+  // Agents
+  startAgent: (data: Parameters<typeof api.startAgent>[0]) => api.startAgent(data),
+  cancelAgent: (id: string) => api.cancelAgent(id),
+  listAgents: () => api.listAgents(),
+  getAgentLogs: (id: string) => api.getAgentLogs(id),
+  clearAgent: (id: string) => api.clearAgent(id),
+  clearAllCompletedAgents: () => api.clearAllCompletedAgents(),
+  getAgentRunningCount: () => api.getAgentRunningCount(),
+  createWorktree: (repoPath: string, branch: string) => api.createWorktree(repoPath, branch),
+  removeWorktree: (repoPath: string, worktreePath: string) => api.removeWorktree(repoPath, worktreePath),
+  onAgentUpdate: (cb: (task: import("./pr-types").AgentTask) => void) => api.onAgentUpdate(cb),
+  onAgentOutput: (cb: (id: string, chunk: string) => void) => api.onAgentOutput(cb),
+  // Rubric
+  getRubricCategories: () => api.getRubricCategories(),
+  saveRubricCategories: (categories: import("./pr-types").RubricCategory[]) => api.saveRubricCategories(categories),
+  getRubricThresholds: () => api.getRubricThresholds(),
+  saveRubricThresholds: (thresholds: import("./pr-types").RubricThresholds) => api.saveRubricThresholds(thresholds),
+  // PR Cache
+  getPrCache: (prId: string) => api.getPrCache(prId),
+  upsertPrCache: (prId: string, fields: Partial<import("./pr-types").PRCacheEntry>) => api.upsertPrCache(prId, fields),
+  cleanupPrCache: () => api.cleanupPrCache(),
 } as const;

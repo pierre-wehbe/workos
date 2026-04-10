@@ -8,6 +8,9 @@ const { runSync, runStreaming, cancelProcess, killAll } = require("./executor.js
 const { checkForUpdate } = require("./updater.js");
 const processes = require("./processes.js");
 const github = require("./github.js");
+const prDetail = require("./pr-detail.js");
+const agents = require("./agents.js");
+const rubric = require("./rubric.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow = null;
@@ -236,6 +239,35 @@ app.whenReady().then(() => {
   ipcMain.handle("db:update-workspace", (_e, id, data) => db.updateWorkspace(id, data));
   ipcMain.handle("github:check", () => github.checkGhInstalled());
 
+  // --- PR Detail ---
+  ipcMain.handle("pr:fetch-detail", (_e, owner, repo, number) => prDetail.fetchPRDetail(owner, repo, number));
+  ipcMain.handle("pr:post-comment", (_e, owner, repo, number, body) => prDetail.postComment(owner, repo, number, body));
+  ipcMain.handle("pr:reply-to-thread", (_e, owner, repo, number, commentId, body) => prDetail.replyToThread(owner, repo, number, commentId, body));
+  ipcMain.handle("pr:submit-review", (_e, owner, repo, number, event, body) => prDetail.submitReview(owner, repo, number, event, body));
+  ipcMain.handle("pr:resolve-thread", (_e, owner, repo, number, threadId) => prDetail.resolveThread(owner, repo, number, threadId));
+
+  // --- Agents ---
+  ipcMain.handle("agent:start", (_e, data) => agents.startTask(data));
+  ipcMain.handle("agent:cancel", (_e, id) => agents.cancelTask(id));
+  ipcMain.handle("agent:list", () => agents.listTasks());
+  ipcMain.handle("agent:logs", (_e, id) => agents.getTaskLogs(id));
+  ipcMain.handle("agent:clear", (_e, id) => agents.clearTask(id));
+  ipcMain.handle("agent:clear-all-completed", () => agents.clearAllCompleted());
+  ipcMain.handle("agent:running-count", () => agents.getRunningCount());
+  ipcMain.handle("agent:create-worktree", (_e, repoPath, branch) => agents.createWorktree(repoPath, branch));
+  ipcMain.handle("agent:remove-worktree", (_e, repoPath, worktreePath) => agents.removeWorktree(repoPath, worktreePath));
+
+  // --- Rubric ---
+  ipcMain.handle("rubric:get-categories", () => rubric.getCategories());
+  ipcMain.handle("rubric:save-categories", (_e, categories) => rubric.saveCategories(categories));
+  ipcMain.handle("rubric:get-thresholds", () => rubric.getThresholds());
+  ipcMain.handle("rubric:save-thresholds", (_e, thresholds) => rubric.saveThresholds(thresholds));
+
+  // --- PR Cache ---
+  ipcMain.handle("pr-cache:get", (_e, prId) => db.getPrCache(prId));
+  ipcMain.handle("pr-cache:upsert", (_e, prId, fields) => db.upsertPrCache(prId, fields));
+  ipcMain.handle("pr-cache:cleanup", () => db.cleanupPrCache());
+
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));
   ipcMain.handle("process:stop", (_e, id) => processes.stopProcess(id));
@@ -247,10 +279,11 @@ app.whenReady().then(() => {
   ipcMain.handle("process:env", (_e, id) => processes.getProcessEnv(id));
 
   createWindow();
+  agents.init(app, mainWindow);
   processes.init(app, mainWindow);
   github.init(mainWindow);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on("before-quit", () => { killAll(); processes.killAll(); github.destroy(); });
+app.on("before-quit", () => { killAll(); processes.killAll(); agents.killAll(); github.destroy(); });
 app.on("window-all-closed", () => { app.quit(); });

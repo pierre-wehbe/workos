@@ -103,6 +103,37 @@ interface ElectronAPI {
   githubUserOrgs: () => Promise<string[]>;
   updateWorkspace: (id: string, data: { githubOrgs?: string[]; name?: string; org?: string }) => Promise<import("./lib/types").Workspace>;
   onGithubUpdate: (cb: (data: import("./lib/types").GitHubData) => void) => () => void;
+
+  // PR Detail
+  fetchPRDetail: (owner: string, repo: string, number: number) => Promise<import("./lib/pr-types").PRDetail | null>;
+  postPRComment: (owner: string, repo: string, number: number, body: string) => Promise<{ ok: boolean }>;
+  replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => Promise<{ ok: boolean }>;
+  submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => Promise<{ ok: boolean }>;
+  resolveThread: (owner: string, repo: string, number: number, threadId: string) => Promise<{ ok: boolean }>;
+
+  // Agents
+  startAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string }) => Promise<import("./lib/pr-types").AgentTask>;
+  cancelAgent: (id: string) => Promise<void>;
+  listAgents: () => Promise<import("./lib/pr-types").AgentTask[]>;
+  getAgentLogs: (id: string) => Promise<string>;
+  clearAgent: (id: string) => Promise<void>;
+  clearAllCompletedAgents: () => Promise<void>;
+  getAgentRunningCount: () => Promise<number>;
+  createWorktree: (repoPath: string, branch: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  removeWorktree: (repoPath: string, worktreePath: string) => Promise<{ ok: boolean; error?: string }>;
+  onAgentUpdate: (cb: (task: import("./lib/pr-types").AgentTask) => void) => () => void;
+  onAgentOutput: (cb: (id: string, chunk: string) => void) => () => void;
+
+  // Rubric
+  getRubricCategories: () => Promise<import("./lib/pr-types").RubricCategory[]>;
+  saveRubricCategories: (categories: import("./lib/pr-types").RubricCategory[]) => Promise<import("./lib/pr-types").RubricCategory[]>;
+  getRubricThresholds: () => Promise<import("./lib/pr-types").RubricThresholds>;
+  saveRubricThresholds: (thresholds: import("./lib/pr-types").RubricThresholds) => Promise<import("./lib/pr-types").RubricThresholds>;
+
+  // PR Cache
+  getPrCache: (prId: string) => Promise<import("./lib/pr-types").PRCacheEntry | null>;
+  upsertPrCache: (prId: string, fields: Partial<import("./lib/pr-types").PRCacheEntry>) => Promise<void>;
+  cleanupPrCache: () => Promise<void>;
 }
 
 declare global {
