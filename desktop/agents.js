@@ -89,16 +89,15 @@ function startTask({ prId, taskType, cli, prompt, workingDir }) {
   child.stderr.on("data", handleData);
 
   child.on("close", (code) => {
-    const status = code === 0 ? "done" : "failed";
-    entry.status = status;
+    entry.status = code === 0 ? "completed" : "failed";
     entry.completedAt = new Date().toISOString();
     entry.tokenEstimate = Math.round(output.length / 4);
-    entry.result = { exitCode: code, outputLength: output.length };
+    entry.result = output;
     logStream.end();
 
     db.updateAgentTask(id, {
-      status,
-      result: entry.result,
+      status: entry.status,
+      result: output,
       tokenEstimate: entry.tokenEstimate,
       completedAt: entry.completedAt,
     });
@@ -109,12 +108,12 @@ function startTask({ prId, taskType, cli, prompt, workingDir }) {
   child.on("error", (err) => {
     entry.status = "failed";
     entry.completedAt = new Date().toISOString();
-    entry.result = { error: err.message };
+    entry.result = err.message;
     logStream.end();
 
     db.updateAgentTask(id, {
       status: "failed",
-      result: entry.result,
+      result: err.message,
       tokenEstimate: entry.tokenEstimate,
       completedAt: entry.completedAt,
     });
@@ -137,12 +136,12 @@ function cancelTask(id) {
   setTimeout(() => {
     if (entry.status === "running") {
       try { process.kill(-pid, "SIGKILL"); } catch {}
-      entry.status = "failed";
+      entry.status = "cancelled";
       entry.completedAt = new Date().toISOString();
-      entry.result = { cancelled: true };
+      entry.result = "Cancelled by user";
 
       db.updateAgentTask(id, {
-        status: "failed",
+        status: "cancelled",
         result: entry.result,
         tokenEstimate: entry.tokenEstimate,
         completedAt: entry.completedAt,
