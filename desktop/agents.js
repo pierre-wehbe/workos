@@ -9,11 +9,13 @@ const registry = new Map();
 let logsDir = null;
 let mainWindow = null;
 
-const CLI_ARGS = {
-  claude: (prompt) => ["-p", prompt, "--output-format", "text"],
-  codex: (prompt) => ["exec", prompt],
-  gemini: (prompt) => ["-p", prompt],
-};
+// Returns { args, stdin } — stdin is non-null when the prompt should be piped
+function cliCommand(cli, prompt) {
+  if (cli === "claude") return { args: ["-p", prompt, "--output-format", "text"], stdin: null };
+  if (cli === "codex") return { args: ["exec", "-"], stdin: prompt };
+  if (cli === "gemini") return { args: ["-p", prompt], stdin: null };
+  return { args: [prompt], stdin: null };
+}
 
 function init(app, window) {
   logsDir = path.join(app.getPath("userData"), "agent-logs");
@@ -42,14 +44,19 @@ function startTask({ prId, taskType, cli, prompt, workingDir }) {
   const env = loadShellEnvironment();
   const cwd = workingDir || undefined;
 
-  const argsFn = CLI_ARGS[cli];
-  const args = argsFn ? argsFn(prompt) : [prompt];
+  const { args, stdin } = cliCommand(cli, prompt);
 
   // Persist to DB
   db.createAgentTask({ id, prId, taskType, cli });
   db.updateAgentTask(id, { status: "running", logFile });
 
   const child = spawn(cli, args, { env, cwd, detached: true });
+
+  // Pipe prompt via stdin if needed (e.g. codex exec reads from stdin)
+  if (stdin) {
+    child.stdin.write(stdin);
+    child.stdin.end();
+  }
 
   let output = "";
   const entry = {
