@@ -39,13 +39,11 @@ export function BriefingTab({
   const handleAnalyze = async () => {
     setAnalyzing(true);
     try {
-      const prompt = [
-        `Analyze PR ${prId}.`,
-        `Provide a concise summary of the changes, key files modified, and an overall assessment.`,
-        rubricCategories.length > 0
-          ? `Score against these rubric categories: ${rubricCategories.map((c) => c.name).join(", ")}.`
-          : "",
-      ].filter(Boolean).join(" ");
+      const fileList = prDetail?.files?.map((f) => `  ${f.path} (+${f.additions} -${f.deletions})`).join("\n") ?? "";
+      const rubricSection = rubricCategories.length > 0
+        ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}\n\nProvide a weighted overall score out of 100.`
+        : "";
+      const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}`;
       await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
     } finally {
       setAnalyzing(false);
