@@ -25,12 +25,12 @@ export default function App() {
   const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
   const github = useGitHub();
-  const [selectedAICli, setSelectedAICli] = useState<AICli>("claude");
+  const [selectedAICli, setSelectedAICli] = useState<AICli>("codex");
 
   useEffect(() => {
     window.electronAPI.getConfig().then((c) => {
       setConfig(c);
-      setSelectedAICli(c.selectedAICli ?? "claude");
+      setSelectedAICli(c.selectedAICli ?? "codex");
     });
   }, []);
 

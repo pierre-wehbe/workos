@@ -1,5 +1,6 @@
 {
   "name": "workos",
+  "productName": "WorkOS",
   "version": "0.1.0",
   "private": true,
   "description": "Desktop command center for machine setup and workspace management.",

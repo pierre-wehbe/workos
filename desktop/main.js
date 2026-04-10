@@ -36,6 +36,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  app.setName("WorkOS");
   loadShellEnvironment();
   db.init(app);
   checkForUpdate(app, session, db);
@@ -53,7 +54,7 @@ app.whenReady().then(() => {
     setupComplete: db.getSetupComplete(),
     activeWorkspaceId: db.getMeta("active_workspace_id"),
     appVersion: app.getVersion(),
-    selectedAICli: db.getMeta("selected_ai_cli") || "claude",
+    selectedAICli: db.getMeta("selected_ai_cli") || "codex",
   }));
 
   // --- AI CLI ---
