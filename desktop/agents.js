@@ -11,7 +11,7 @@ let mainWindow = null;
 
 const CLI_ARGS = {
   claude: (prompt) => ["-p", prompt, "--output-format", "text"],
-  codex: (prompt) => ["--quiet", "--full-auto", prompt],
+  codex: (prompt) => ["exec", prompt],
   gemini: (prompt) => ["-p", prompt],
 };
 
