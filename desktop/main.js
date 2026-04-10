@@ -28,6 +28,8 @@ function createWindow() {
     },
   });
 
+  mainWindow.setTitle("WorkOS");
+
   if (rendererUrl) {
     mainWindow.loadURL(rendererUrl);
   } else {
