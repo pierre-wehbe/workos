@@ -7,6 +7,7 @@ const db = require("./db.js");
 const { runSync, runStreaming, cancelProcess, killAll } = require("./executor.js");
 const { checkForUpdate } = require("./updater.js");
 const processes = require("./processes.js");
+const github = require("./github.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow = null;
@@ -38,6 +39,14 @@ app.whenReady().then(() => {
   loadShellEnvironment();
   db.init(app);
   checkForUpdate(app, session, db);
+
+  // Set dock icon on macOS
+  if (process.platform === "darwin" && app.dock) {
+    const iconPath = path.join(__dirname, "../assets/icon.png");
+    if (require("node:fs").existsSync(iconPath)) {
+      app.dock.setIcon(iconPath);
+    }
+  }
 
   // --- App ---
   ipcMain.handle("app:get-config", () => ({
@@ -176,8 +185,7 @@ app.whenReady().then(() => {
   ipcMain.handle("machine:pyenv-global", (_e, version) => machine.setPyenvGlobal(version));
   ipcMain.handle("machine:check-updates", () => machine.checkUpdates());
 
-  // --- GitHub --- (init after createWindow below)
-  const github = require("./github.js");
+  // --- GitHub --- (init called after createWindow below)
   ipcMain.handle("github:fetch", () => github.fetchAll());
   ipcMain.handle("github:cache", () => github.getCache());
   ipcMain.handle("github:user-orgs", () => github.getUserOrgs());
