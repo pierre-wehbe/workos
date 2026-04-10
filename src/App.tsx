@@ -12,8 +12,11 @@ import { useGitHub } from "./lib/use-github";
 import type { AICli, AppConfig, Project } from "./lib/types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
+import { AgentBadge } from "./components/AgentBadge";
+import { AgentPanel } from "./components/AgentPanel";
 import { AICliSelector } from "./components/AICliSelector";
 import { useProcesses } from "./lib/use-processes";
+import { useAgents } from "./lib/use-agents";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -22,6 +25,8 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
   const [showProcessPanel, setShowProcessPanel] = useState(false);
+  const { tasks: agentTasks, runningCount: agentRunningCount, cancel: cancelAgent, clear: clearAgent, clearAllCompleted: clearAllCompletedAgents, getLogs: getAgentLogs } = useAgents();
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
   const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
   const github = useGitHub();
@@ -81,6 +86,17 @@ export default function App() {
               onClear={clearProcess}
               onClearAllStopped={clearAllStopped}
               onClose={() => setShowProcessPanel(false)}
+            />
+          )}
+          <AgentBadge count={agentRunningCount} onClick={() => setShowAgentPanel(!showAgentPanel)} />
+          {showAgentPanel && (
+            <AgentPanel
+              tasks={agentTasks}
+              onCancel={cancelAgent}
+              onClear={clearAgent}
+              onClearAllCompleted={clearAllCompletedAgents}
+              onGetLogs={getAgentLogs}
+              onClose={() => setShowAgentPanel(false)}
             />
           )}
           <AICliSelector selectedCli={selectedAICli} onSelect={setSelectedAICli} />
