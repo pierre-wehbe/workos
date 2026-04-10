@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Clock, FileText, Loader2, RefreshCw, Zap } from "lucide-react";
 import type { PRDetail, PRCacheEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
-import { ipc } from "../../../lib/ipc";
 
 interface BriefingTabProps {
   prDetail: PRDetail | null;
@@ -10,45 +9,55 @@ interface BriefingTabProps {
   selectedCli: string;
   rubricCategories: RubricCategory[];
   rubricThresholds: RubricThresholds;
+  agentTasks: AgentTask[];
   onStartAgent: (data: { prId: string; taskType: string; cli: string; prompt: string }) => Promise<AgentTask>;
   onUpdateCache: (prId: string, fields: Partial<PRCacheEntry>) => Promise<void>;
 }
 
 export function BriefingTab({
   prDetail, cache, prId, selectedCli,
-  rubricCategories, rubricThresholds, onStartAgent, onUpdateCache,
+  rubricCategories, rubricThresholds, agentTasks, onStartAgent, onUpdateCache,
 }: BriefingTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
-  const pendingTaskId = useRef<string | null>(null);
+  const processedTaskIds = useRef(new Set<string>());
 
   const hasSummary = !!cache?.summary;
   const hasRubric = !!cache?.rubricResult;
   const isStale = !!(cache?.headSha && prDetail?.headSha && cache.headSha !== prDetail.headSha);
 
-  // Listen for agent task completion and write result to cache
+  // Find summarize tasks for this PR from the global agent tasks list
+  const myTasks = agentTasks.filter((t) => t.prId === prId && t.taskType === "summarize");
+  const runningTask = myTasks.find((t) => t.status === "running");
+  const isAgentRunning = !!runningTask;
+
+  // Reactively detect completed tasks and write result to cache
   useEffect(() => {
-    const unsub = ipc.onAgentUpdate((task: AgentTask) => {
-      if (task.id !== pendingTaskId.current) return;
-      if (task.status !== "completed" && task.status !== "failed") return;
+    for (const task of myTasks) {
+      if (task.status !== "completed" || !task.result) continue;
+      if (processedTaskIds.current.has(task.id)) continue;
 
-      pendingTaskId.current = null;
+      processedTaskIds.current.add(task.id);
       setAnalyzing(false);
+      onUpdateCache(prId, {
+        summary: task.result,
+        lastAnalyzedAt: task.completedAt ?? new Date().toISOString(),
+      });
+      break; // process one at a time
+    }
+  }, [agentTasks, prId, onUpdateCache]);
 
-      if (task.status === "completed" && task.result) {
-        // Store the raw agent output as the summary, and update cache timestamp
-        onUpdateCache(prId, {
-          summary: task.result,
-          lastAnalyzedAt: new Date().toISOString(),
-        });
-      }
-    });
-    return unsub;
-  }, [prId, onUpdateCache]);
+  // Sync analyzing state with running agent
+  useEffect(() => {
+    if (isAgentRunning) setAnalyzing(true);
+    else if (!runningTask && analyzing && myTasks.some((t) => t.status === "completed" || t.status === "failed")) {
+      setAnalyzing(false);
+    }
+  }, [isAgentRunning]);
 
   // Auto-trigger analysis for small PRs without cached analysis
   useEffect(() => {
-    if (autoTriggered || hasSummary || !prDetail || analyzing) return;
+    if (autoTriggered || hasSummary || !prDetail || analyzing || isAgentRunning) return;
     const withinThreshold =
       prDetail.changedFiles <= rubricThresholds.autoSummarizeMaxFiles &&
       (prDetail.additions + prDetail.deletions) <= rubricThresholds.autoSummarizeMaxLines;
@@ -56,7 +65,7 @@ export function BriefingTab({
       setAutoTriggered(true);
       handleAnalyze();
     }
-  }, [prDetail, hasSummary, autoTriggered, analyzing]);
+  }, [prDetail, hasSummary, autoTriggered, analyzing, isAgentRunning]);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -65,8 +74,7 @@ export function BriefingTab({
       ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}\n\nProvide a weighted overall score out of 100.`
       : "";
     const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}`;
-    const task = await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
-    pendingTaskId.current = task.id;
+    await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
   };
 
   return (

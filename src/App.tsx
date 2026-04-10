@@ -155,6 +155,7 @@ export default function App() {
                     selectedCli={selectedAICli}
                     rubricCategories={rubricCategories}
                     rubricThresholds={rubricThresholds}
+                    agentTasks={agentTasks}
                     onStartAgent={startAgent}
                     onBack={() => setSelectedPR(null)}
                   />

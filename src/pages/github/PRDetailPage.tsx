@@ -16,6 +16,7 @@ interface PRDetailPageProps {
   selectedCli: string;
   rubricCategories: RubricCategory[];
   rubricThresholds: RubricThresholds;
+  agentTasks: AgentTask[];
   onStartAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string }) => Promise<AgentTask>;
   onBack: () => void;
 }
@@ -24,7 +25,7 @@ type Tab = "briefing" | "comments" | "rubric" | "actions";
 
 export function PRDetailPage({
   pr, username, selectedCli, rubricCategories, rubricThresholds,
-  onStartAgent, onBack,
+  agentTasks, onStartAgent, onBack,
 }: PRDetailPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>("briefing");
   const { prDetail, cache, loading, fetchDetail, updateCache } = usePRDetail();
@@ -132,6 +133,7 @@ export function PRDetailPage({
             selectedCli={selectedCli}
             rubricCategories={rubricCategories}
             rubricThresholds={rubricThresholds}
+            agentTasks={agentTasks}
             onStartAgent={onStartAgent}
             onUpdateCache={updateCache}
           />
