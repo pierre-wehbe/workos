@@ -8,6 +8,8 @@ interface ElectronAPI {
   openInIDE: (path: string, ide: string) => Promise<void>;
   openInFinder: (path: string) => Promise<void>;
   getDbPath: () => Promise<string>;
+  setAICli: (cli: import("./lib/types").AICli) => Promise<void>;
+  getAIStatus: (cli: import("./lib/types").AICli) => Promise<import("./lib/types").AICliStatus>;
   revealDb: () => Promise<void>;
 
   // Theme

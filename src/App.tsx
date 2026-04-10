@@ -9,9 +9,10 @@ import { GitHubPage } from "./pages/github/GitHubPage";
 import { useWorkspaces } from "./lib/use-workspaces";
 import { useProjects } from "./lib/use-projects";
 import { useGitHub } from "./lib/use-github";
-import type { AppConfig, Project } from "./lib/types";
+import type { AICli, AppConfig, Project } from "./lib/types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
+import { AICliSelector } from "./components/AICliSelector";
 import { useProcesses } from "./lib/use-processes";
 
 export default function App() {
@@ -24,9 +25,13 @@ export default function App() {
   const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
   const github = useGitHub();
+  const [selectedAICli, setSelectedAICli] = useState<AICli>("claude");
 
   useEffect(() => {
-    window.electronAPI.getConfig().then(setConfig);
+    window.electronAPI.getConfig().then((c) => {
+      setConfig(c);
+      setSelectedAICli(c.selectedAICli ?? "claude");
+    });
   }, []);
 
   if (!config) return null;
@@ -78,6 +83,7 @@ export default function App() {
               onClose={() => setShowProcessPanel(false)}
             />
           )}
+          <AICliSelector selectedCli={selectedAICli} onSelect={setSelectedAICli} />
           <ThemeToggle />
         </div>
       </div>

@@ -53,7 +53,29 @@ app.whenReady().then(() => {
     setupComplete: db.getSetupComplete(),
     activeWorkspaceId: db.getMeta("active_workspace_id"),
     appVersion: app.getVersion(),
+    selectedAICli: db.getMeta("selected_ai_cli") || "claude",
   }));
+
+  // --- AI CLI ---
+  ipcMain.handle("ai:set-cli", (_e, cli) => { db.setMeta("selected_ai_cli", cli); });
+  ipcMain.handle("ai:get-status", async (_e, cli) => {
+    const { execFile: ef } = require("node:child_process");
+    const { promisify } = require("node:util");
+    const execAsync = promisify(ef);
+    const env = { ...loadShellEnvironment(), HOMEBREW_NO_AUTO_UPDATE: "1" };
+    const run = async (cmd) => {
+      try {
+        const { stdout } = await execAsync("/bin/zsh", ["-l", "-c", cmd], { encoding: "utf8", env, timeout: 10000 });
+        return stdout.trim();
+      } catch { return null; }
+    };
+    const version = await run(`${cli} --version 2>/dev/null`);
+    if (!version) return { installed: false, authenticated: false, version: null };
+    const authRaw = await run(`${cli} auth status 2>&1`);
+    const lower = (authRaw || "").toLowerCase();
+    const authenticated = !!authRaw && !lower.includes("not logged") && !lower.includes("not authenticated") && !lower.includes("no api key") && !lower.includes("usage:") && !lower.includes("error");
+    return { installed: true, authenticated, version: version.split("\n")[0] };
+  });
 
   ipcMain.handle("app:open-in-ide", (_e, targetPath, ide) => {
     const cmd = ide === "xcode" ? "open" : ide === "vscode" ? "code" : "cursor";

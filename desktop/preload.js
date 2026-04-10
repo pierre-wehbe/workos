@@ -8,6 +8,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDbPath: () => ipcRenderer.invoke("app:get-db-path"),
   revealDb: () => ipcRenderer.invoke("app:reveal-db"),
 
+  // AI CLI
+  setAICli: (cli) => ipcRenderer.invoke("ai:set-cli", cli),
+  getAIStatus: (cli) => ipcRenderer.invoke("ai:get-status", cli),
+
   // Theme
   setTheme: (mode) => ipcRenderer.invoke("theme:set", mode),
 

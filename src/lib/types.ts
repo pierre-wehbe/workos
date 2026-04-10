@@ -24,6 +24,15 @@ export interface AppConfig {
   setupComplete: boolean;
   activeWorkspaceId: string | null;
   appVersion: string;
+  selectedAICli: "claude" | "codex" | "gemini";
+}
+
+export type AICli = "claude" | "codex" | "gemini";
+
+export interface AICliStatus {
+  installed: boolean;
+  authenticated: boolean;
+  version: string | null;
 }
 
 export type DetectionStatus = "checking" | "installed" | "missing" | "error";
