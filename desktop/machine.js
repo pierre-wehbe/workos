@@ -254,25 +254,31 @@ async function detectAICLIs() {
     run("gemini --version 2>/dev/null"),
   ]);
 
-  // Auth check is fast enough for initial scan
-  const [claudeAuth, codexAuth, geminiAuth] = await Promise.all([
-    claudeRaw ? run("claude auth status 2>&1") : Promise.resolve(null),
-    codexRaw ? run("codex auth status 2>&1") : Promise.resolve(null),
-    geminiRaw ? run("gemini auth status 2>&1") : Promise.resolve(null),
-  ]);
+  // Per-CLI auth detection
+  let claudeAuthed = null;
+  if (claudeRaw) {
+    const raw = await run("claude auth status 2>&1");
+    try { claudeAuthed = JSON.parse(raw || "{}").loggedIn === true; } catch {
+      claudeAuthed = (raw || "").includes("loggedIn");
+    }
+  }
 
-  function parseAuth(raw) {
-    if (!raw) return false;
-    const lower = raw.toLowerCase();
-    if (lower.includes("not logged") || lower.includes("not authenticated") || lower.includes("no api key") || lower.includes("usage:")) return false;
-    if (lower.includes("error")) return false;
-    return true;
+  let codexAuthed = null;
+  if (codexRaw) {
+    const authFile = path.join(HOME, ".codex", "auth.json");
+    try { codexAuthed = fs.readFileSync(authFile, "utf8").length > 10; } catch { codexAuthed = false; }
+  }
+
+  let geminiAuthed = null;
+  if (geminiRaw) {
+    const raw = await run("gemini auth status 2>&1");
+    geminiAuthed = (raw || "").includes("cached credentials") || (raw || "").includes("Logged in");
   }
 
   return {
-    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: claudeRaw ? parseAuth(claudeAuth) : null },
-    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: codexRaw ? parseAuth(codexAuth) : null },
-    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: geminiRaw ? parseAuth(geminiAuth) : null },
+    claude: { installed: !!claudeRaw, version: claudeRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: claudeAuthed },
+    codex: { installed: !!codexRaw, version: codexRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: codexAuthed },
+    gemini: { installed: !!geminiRaw, version: geminiRaw?.split("\n")[0] ?? null, latestVersion: null, authenticated: geminiAuthed },
   };
 }
 

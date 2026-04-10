@@ -64,6 +64,8 @@ app.whenReady().then(() => {
   ipcMain.handle("ai:get-status", async (_e, cli) => {
     const { execFile: ef } = require("node:child_process");
     const { promisify } = require("node:util");
+    const fss = require("node:fs");
+    const os = require("node:os");
     const execAsync = promisify(ef);
     const env = { ...loadShellEnvironment(), HOMEBREW_NO_AUTO_UPDATE: "1" };
     const run = async (cmd) => {
@@ -74,9 +76,26 @@ app.whenReady().then(() => {
     };
     const version = await run(`${cli} --version 2>/dev/null`);
     if (!version) return { installed: false, authenticated: false, version: null };
-    const authRaw = await run(`${cli} auth status 2>&1`);
-    const lower = (authRaw || "").toLowerCase();
-    const authenticated = !!authRaw && !lower.includes("not logged") && !lower.includes("not authenticated") && !lower.includes("no api key") && !lower.includes("usage:") && !lower.includes("error");
+
+    // Per-CLI auth detection
+    let authenticated = false;
+    if (cli === "claude") {
+      const authRaw = await run("claude auth status 2>&1");
+      try { authenticated = JSON.parse(authRaw || "{}").loggedIn === true; } catch {
+        authenticated = (authRaw || "").includes("loggedIn");
+      }
+    } else if (cli === "codex") {
+      // Codex has no auth status command — check if auth.json exists
+      const authFile = path.join(os.homedir(), ".codex", "auth.json");
+      try {
+        const content = fss.readFileSync(authFile, "utf8");
+        authenticated = content.length > 10; // Has meaningful content
+      } catch { authenticated = false; }
+    } else if (cli === "gemini") {
+      const authRaw = await run("gemini auth status 2>&1");
+      authenticated = (authRaw || "").includes("cached credentials") || (authRaw || "").includes("Logged in");
+    }
+
     return { installed: true, authenticated, version: version.split("\n")[0] };
   });
 

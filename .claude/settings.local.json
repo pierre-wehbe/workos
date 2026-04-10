@@ -98,7 +98,11 @@
       "Bash(sips -z 64 64 assets/icon.png --out /Users/pierro/Documents/Development/WorkOS/assets/icon.iconset/icon_32x32@2x.png)",
       "Bash(sips -z 128 128 assets/icon.png --out /Users/pierro/Documents/Development/WorkOS/assets/icon.iconset/icon_128x128.png)",
       "Bash(head -5 echo \"---\" ls node_modules/electron/dist/Electron.app/Contents/Resources/*.lproj)",
-      "Bash([ -f \"$dir/InfoPlist.strings\" ])"
+      "Bash([ -f \"$dir/InfoPlist.strings\" ])",
+      "Bash(codex auth:*)",
+      "Bash(env)",
+      "Bash(claude auth:*)",
+      "Bash(gemini auth:*)"
     ]
   }
 }
