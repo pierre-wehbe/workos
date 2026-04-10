@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Clock, FileText, Loader2, RefreshCw, Zap } from "lucide-react";
 import type { PRDetail, PRCacheEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
+import { ipc } from "../../../lib/ipc";
 
 interface BriefingTabProps {
   prDetail: PRDetail | null;
@@ -19,10 +20,31 @@ export function BriefingTab({
 }: BriefingTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
+  const pendingTaskId = useRef<string | null>(null);
 
   const hasSummary = !!cache?.summary;
   const hasRubric = !!cache?.rubricResult;
   const isStale = !!(cache?.headSha && prDetail?.headSha && cache.headSha !== prDetail.headSha);
+
+  // Listen for agent task completion and write result to cache
+  useEffect(() => {
+    const unsub = ipc.onAgentUpdate((task: AgentTask) => {
+      if (task.id !== pendingTaskId.current) return;
+      if (task.status !== "completed" && task.status !== "failed") return;
+
+      pendingTaskId.current = null;
+      setAnalyzing(false);
+
+      if (task.status === "completed" && task.result) {
+        // Store the raw agent output as the summary, and update cache timestamp
+        onUpdateCache(prId, {
+          summary: task.result,
+          lastAnalyzedAt: new Date().toISOString(),
+        });
+      }
+    });
+    return unsub;
+  }, [prId, onUpdateCache]);
 
   // Auto-trigger analysis for small PRs without cached analysis
   useEffect(() => {
@@ -38,16 +60,13 @@ export function BriefingTab({
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
-    try {
-      const fileList = prDetail?.files?.map((f) => `  ${f.path} (+${f.additions} -${f.deletions})`).join("\n") ?? "";
-      const rubricSection = rubricCategories.length > 0
-        ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}\n\nProvide a weighted overall score out of 100.`
-        : "";
-      const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}`;
-      await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
-    } finally {
-      setAnalyzing(false);
-    }
+    const fileList = prDetail?.files?.map((f) => `  ${f.path} (+${f.additions} -${f.deletions})`).join("\n") ?? "";
+    const rubricSection = rubricCategories.length > 0
+      ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}\n\nProvide a weighted overall score out of 100.`
+      : "";
+    const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide:\n1. A concise 2-4 sentence summary of what this PR does\n2. Key changes by file${rubricSection}`;
+    const task = await onStartAgent({ prId, taskType: "summarize", cli: selectedCli, prompt });
+    pendingTaskId.current = task.id;
   };
 
   return (
