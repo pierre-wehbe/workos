@@ -6,10 +6,12 @@ import { DashboardPage } from "./pages/dashboard/DashboardPage";
 import { ProjectDetailPage } from "./pages/project/ProjectDetailPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { GitHubPage } from "./pages/github/GitHubPage";
+import { PRDetailPage } from "./pages/github/PRDetailPage";
 import { useWorkspaces } from "./lib/use-workspaces";
 import { useProjects } from "./lib/use-projects";
 import { useGitHub } from "./lib/use-github";
-import type { AICli, AppConfig, Project } from "./lib/types";
+import { useRubric } from "./lib/use-rubric";
+import type { AICli, AppConfig, GitHubPR, Project } from "./lib/types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
 import { AgentBadge } from "./components/AgentBadge";
@@ -25,12 +27,14 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const { processes, runningCount, start: startProcess, stop: stopProcess, clear: clearProcess, clearAllStopped } = useProcesses();
   const [showProcessPanel, setShowProcessPanel] = useState(false);
-  const { tasks: agentTasks, runningCount: agentRunningCount, cancel: cancelAgent, clear: clearAgent, clearAllCompleted: clearAllCompletedAgents, getLogs: getAgentLogs } = useAgents();
+  const { tasks: agentTasks, runningCount: agentRunningCount, start: startAgent, cancel: cancelAgent, clear: clearAgent, clearAllCompleted: clearAllCompletedAgents, getLogs: getAgentLogs } = useAgents();
   const [showAgentPanel, setShowAgentPanel] = useState(false);
   const { projects: allProjects, refresh: refreshProjects } = useProjects(activeWorkspace?.id ?? null);
   const pinnedProjects = allProjects.filter((p) => p.pinned);
   const github = useGitHub();
   const [selectedAICli, setSelectedAICli] = useState<AICli>("codex");
+  const [selectedPR, setSelectedPR] = useState<GitHubPR | null>(null);
+  const { categories: rubricCategories, thresholds: rubricThresholds } = useRubric();
 
   useEffect(() => {
     window.electronAPI.getConfig().then((c) => {
@@ -118,7 +122,7 @@ export default function App() {
               onSwitchWorkspace={switchWorkspace}
               onWorkspaceCreated={refreshWorkspaces}
               currentView={selectedProject ? "project" : view}
-              onNavigate={(v) => { setView(v); setSelectedProject(null); }}
+              onNavigate={(v) => { setView(v); setSelectedProject(null); setSelectedPR(null); }}
               onOpenProject={(p) => { setSelectedProject(p); setView("dashboard"); }}
               selectedProjectId={selectedProject?.id ?? null}
             />
@@ -144,13 +148,26 @@ export default function App() {
                   onProjectsChanged={refreshProjects}
                 />
               ) : view === "github" ? (
-                <GitHubPage
-                  data={github}
-                  loading={github.loading}
-                  onRefresh={github.refresh}
-                  projects={allProjects}
-                  activeWorkspace={activeWorkspace}
-                />
+                selectedPR ? (
+                  <PRDetailPage
+                    pr={selectedPR}
+                    username={github.username}
+                    selectedCli={selectedAICli}
+                    rubricCategories={rubricCategories}
+                    rubricThresholds={rubricThresholds}
+                    onStartAgent={startAgent}
+                    onBack={() => setSelectedPR(null)}
+                  />
+                ) : (
+                  <GitHubPage
+                    data={github}
+                    loading={github.loading}
+                    onRefresh={github.refresh}
+                    projects={allProjects}
+                    activeWorkspace={activeWorkspace}
+                    onOpenPR={setSelectedPR}
+                  />
+                )
               ) : view === "settings" ? (
                 <SettingsPage
                   workspaces={workspaces}

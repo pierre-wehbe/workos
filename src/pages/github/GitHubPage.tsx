@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  Check, Circle, Clock, ExternalLink, Eye, Filter, GitPullRequest,
-  Loader2, MessageSquare, RefreshCw, X,
+  Check, Clock, Eye, Filter, GitPullRequest,
+  Loader2, MessageSquare, RefreshCw,
 } from "lucide-react";
 import type { GitHubPR, GitHubData, Project, Workspace } from "../../lib/types";
 
@@ -11,6 +11,7 @@ interface GitHubPageProps {
   onRefresh: () => void;
   projects: Project[];
   activeWorkspace: Workspace | null;
+  onOpenPR: (pr: GitHubPR) => void;
 }
 
 function ReviewBadge({ decision }: { decision: GitHubPR["reviewDecision"] }) {
@@ -30,13 +31,12 @@ function ReviewBadge({ decision }: { decision: GitHubPR["reviewDecision"] }) {
   );
 }
 
-function PRRow({ pr }: { pr: GitHubPR }) {
+function PRRow({ pr, onOpen }: { pr: GitHubPR; onOpen: (pr: GitHubPR) => void }) {
   return (
-    <a
-      href={pr.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-start justify-between gap-3 p-3 rounded-lg border border-wo-border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors group"
+    <button
+      type="button"
+      onClick={() => onOpen(pr)}
+      className="w-full flex items-start gap-3 p-3 rounded-lg border border-wo-border bg-wo-bg-elevated hover:border-wo-accent/20 transition-colors text-left"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -55,8 +55,7 @@ function PRRow({ pr }: { pr: GitHubPR }) {
           ))}
         </div>
       </div>
-      <ExternalLink size={13} className="text-wo-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
-    </a>
+    </button>
   );
 }
 
@@ -72,7 +71,7 @@ function FilterChip({ label, active, count, onClick }: { label: string; active: 
   );
 }
 
-export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace }: GitHubPageProps) {
+export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace, onOpenPR }: GitHubPageProps) {
   const [tab, setTab] = useState<"my-prs" | "reviews">("reviews");
   const [filterScope, setFilterScope] = useState<"workspace" | "all">("workspace");
   const [showDrafts, setShowDrafts] = useState(true);
@@ -207,7 +206,7 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
             )}
           </div>
         )}
-        {filtered.map((pr) => <PRRow key={pr.id} pr={pr} />)}
+        {filtered.map((pr) => <PRRow key={pr.id} pr={pr} onOpen={onOpenPR} />)}
       </div>
     </div>
   );
