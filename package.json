@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "start": "ELECTRON_RUN_AS_NODE= electron desktop/main.js",
-    "postinstall": "electron-rebuild -f -o better-sqlite3 && node -e \"try{const p=require('path'),{execSync:x}=require('child_process');const pl=p.join('node_modules/electron/dist/Electron.app/Contents/Info.plist');x('/usr/libexec/PlistBuddy -c \\\"Set :CFBundleDisplayName WorkOS\\\" '+pl);x('/usr/libexec/PlistBuddy -c \\\"Set :CFBundleName WorkOS\\\" '+pl);console.log('Patched app name')}catch{}\"",
+    "postinstall": "electron-rebuild -f -o better-sqlite3 && node scripts/patch-electron.js",
     "reset": "node -e \"const p=require('path'),f=require('fs'),h=require('os').homedir();f.rmSync(p.join(h,'Library/Application Support/workos'),{recursive:true,force:true});console.log('Reset complete.')\""
   },
   "dependencies": {
