@@ -306,7 +306,7 @@ function rowToPrCache(row) {
   return {
     prId: row.pr_id,
     prData: row.pr_data ? JSON.parse(row.pr_data) : null,
-    summary: row.summary ? JSON.parse(row.summary) : null,
+    summary: row.summary ?? null,
     rubricResult: row.rubric_result ? JSON.parse(row.rubric_result) : null,
     commentThreads: row.comment_threads ? JSON.parse(row.comment_threads) : null,
     lastFetchedAt: row.last_fetched_at,
@@ -329,7 +329,7 @@ function upsertPrCache(prId, fields) {
     ).run(
       prId,
       fields.prData ? JSON.stringify(fields.prData) : null,
-      fields.summary ? JSON.stringify(fields.summary) : null,
+      fields.summary ?? null,
       fields.rubricResult ? JSON.stringify(fields.rubricResult) : null,
       fields.commentThreads ? JSON.stringify(fields.commentThreads) : null,
       fields.lastFetchedAt || null,
@@ -343,7 +343,7 @@ function upsertPrCache(prId, fields) {
       commentThreads: "comment_threads", lastFetchedAt: "last_fetched_at",
       lastAnalyzedAt: "last_analyzed_at", prState: "pr_state", headSha: "head_sha",
     };
-    const jsonCols = new Set(["prData", "summary", "rubricResult", "commentThreads"]);
+    const jsonCols = new Set(["prData", "rubricResult", "commentThreads"]);
     const sets = [];
     const values = [];
     for (const [key, col] of Object.entries(colMap)) {
@@ -414,7 +414,7 @@ function rowToAgentTask(row) {
     taskType: row.task_type,
     status: row.status,
     cli: row.cli,
-    result: row.result ? JSON.parse(row.result) : null,
+    result: row.result ?? null,
     tokenEstimate: row.token_estimate,
     logFile: row.log_file,
     startedAt: row.started_at,
@@ -449,7 +449,7 @@ function updateAgentTask(id, fields) {
   for (const [key, col] of Object.entries(colMap)) {
     if (key in fields) {
       sets.push(`${col} = ?`);
-      values.push(key === "result" && fields[key] ? JSON.stringify(fields[key]) : (fields[key] ?? null));
+      values.push(fields[key] ?? null);
     }
   }
   if (sets.length === 0) return getAgentTask(id);
@@ -463,7 +463,7 @@ function clearAgentTask(id) {
 }
 
 function clearCompletedAgentTasks() {
-  db.prepare("DELETE FROM agent_tasks WHERE status IN ('done', 'error')").run();
+  db.prepare("DELETE FROM agent_tasks WHERE status IN ('completed', 'failed', 'cancelled')").run();
 }
 
 // Export / Import
