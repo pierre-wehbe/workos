@@ -44,6 +44,7 @@ app.whenReady().then(() => {
   app.setName("WorkOS");
   loadShellEnvironment();
   db.init(app);
+  db.cleanupPrCache();
   checkForUpdate(app, session, db);
 
   // Set dock icon on macOS
