@@ -55,6 +55,36 @@ function init(app) {
       pinned INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS pr_cache (
+      pr_id TEXT PRIMARY KEY,
+      pr_data TEXT,
+      summary TEXT,
+      rubric_result TEXT,
+      comment_threads TEXT,
+      last_fetched_at TEXT,
+      last_analyzed_at TEXT,
+      pr_state TEXT NOT NULL DEFAULT 'OPEN',
+      head_sha TEXT
+    );
+    CREATE TABLE IF NOT EXISTS agent_tasks (
+      id TEXT PRIMARY KEY,
+      pr_id TEXT,
+      task_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      cli TEXT,
+      result TEXT,
+      token_estimate INTEGER DEFAULT 0,
+      log_file TEXT,
+      started_at TEXT,
+      completed_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS rubric_categories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      weight INTEGER NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
   `);
 
   // Migrations
@@ -65,6 +95,34 @@ function init(app) {
   const wsCols = db.prepare("PRAGMA table_info(workspaces)").all().map((c) => c.name);
   if (!wsCols.includes("github_orgs")) {
     db.exec("ALTER TABLE workspaces ADD COLUMN github_orgs TEXT DEFAULT ''");
+  }
+
+  // Seed default rubric categories
+  const rubricCount = db.prepare("SELECT COUNT(*) as cnt FROM rubric_categories").get().cnt;
+  if (rubricCount === 0) {
+    const insertRubric = db.prepare(
+      "INSERT INTO rubric_categories (id, name, weight, description, sort_order) VALUES (?, ?, ?, ?, ?)"
+    );
+    const seedRubrics = db.transaction(() => {
+      insertRubric.run(uuid(), "Code Clarity", 20, "Readable naming, consistent style, small focused functions, clear intent without excessive comments.", 0);
+      insertRubric.run(uuid(), "Test Coverage", 20, "Tests for happy path, edge cases, error scenarios. Integration tests where appropriate.", 1);
+      insertRubric.run(uuid(), "Architecture", 20, "Clean separation of concerns, appropriate abstractions, no unnecessary coupling.", 2);
+      insertRubric.run(uuid(), "Error Handling", 15, "Graceful error handling, no silent failures, appropriate logging.", 3);
+      insertRubric.run(uuid(), "Security", 15, "No injection vulnerabilities, proper input validation, safe defaults.", 4);
+      insertRubric.run(uuid(), "PR Hygiene", 10, "Descriptive title and body, atomic commits, reasonable PR size.", 5);
+    });
+    seedRubrics();
+  }
+
+  // Seed default rubric thresholds
+  if (!getMeta("rubric_thresholds")) {
+    setMeta("rubric_thresholds", JSON.stringify({
+      autoApproveScore: 95,
+      autoApproveMaxFiles: 5,
+      autoApproveMaxLines: 300,
+      autoSummarizeMaxFiles: 5,
+      autoSummarizeMaxLines: 300,
+    }));
   }
 
   return db;
@@ -243,6 +301,171 @@ function updateTool(id, fields) {
   return rowToTool(db.prepare("SELECT * FROM tools WHERE id = ?").get(id));
 }
 
+// PR Cache
+function rowToPrCache(row) {
+  return {
+    prId: row.pr_id,
+    prData: row.pr_data ? JSON.parse(row.pr_data) : null,
+    summary: row.summary ? JSON.parse(row.summary) : null,
+    rubricResult: row.rubric_result ? JSON.parse(row.rubric_result) : null,
+    commentThreads: row.comment_threads ? JSON.parse(row.comment_threads) : null,
+    lastFetchedAt: row.last_fetched_at,
+    lastAnalyzedAt: row.last_analyzed_at,
+    prState: row.pr_state,
+    headSha: row.head_sha,
+  };
+}
+
+function getPrCache(prId) {
+  const row = db.prepare("SELECT * FROM pr_cache WHERE pr_id = ?").get(prId);
+  return row ? rowToPrCache(row) : null;
+}
+
+function upsertPrCache(prId, fields) {
+  const existing = db.prepare("SELECT * FROM pr_cache WHERE pr_id = ?").get(prId);
+  if (!existing) {
+    db.prepare(
+      "INSERT INTO pr_cache (pr_id, pr_data, summary, rubric_result, comment_threads, last_fetched_at, last_analyzed_at, pr_state, head_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(
+      prId,
+      fields.prData ? JSON.stringify(fields.prData) : null,
+      fields.summary ? JSON.stringify(fields.summary) : null,
+      fields.rubricResult ? JSON.stringify(fields.rubricResult) : null,
+      fields.commentThreads ? JSON.stringify(fields.commentThreads) : null,
+      fields.lastFetchedAt || null,
+      fields.lastAnalyzedAt || null,
+      fields.prState || "OPEN",
+      fields.headSha || null
+    );
+  } else {
+    const colMap = {
+      prData: "pr_data", summary: "summary", rubricResult: "rubric_result",
+      commentThreads: "comment_threads", lastFetchedAt: "last_fetched_at",
+      lastAnalyzedAt: "last_analyzed_at", prState: "pr_state", headSha: "head_sha",
+    };
+    const jsonCols = new Set(["prData", "summary", "rubricResult", "commentThreads"]);
+    const sets = [];
+    const values = [];
+    for (const [key, col] of Object.entries(colMap)) {
+      if (key in fields) {
+        sets.push(`${col} = ?`);
+        values.push(jsonCols.has(key) && fields[key] ? JSON.stringify(fields[key]) : (fields[key] ?? null));
+      }
+    }
+    if (sets.length > 0) {
+      values.push(prId);
+      db.prepare(`UPDATE pr_cache SET ${sets.join(", ")} WHERE pr_id = ?`).run(...values);
+    }
+  }
+  return getPrCache(prId);
+}
+
+function cleanupPrCache() {
+  db.prepare("DELETE FROM pr_cache WHERE pr_state IN ('MERGED', 'CLOSED')").run();
+}
+
+function updatePrState(prId, state) {
+  db.prepare("UPDATE pr_cache SET pr_state = ? WHERE pr_id = ?").run(state, prId);
+}
+
+// Rubric Categories
+function rowToRubricCategory(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    weight: row.weight,
+    description: row.description,
+    sortOrder: row.sort_order,
+  };
+}
+
+function getRubricCategories() {
+  return db.prepare("SELECT * FROM rubric_categories ORDER BY sort_order").all().map(rowToRubricCategory);
+}
+
+function saveRubricCategories(categories) {
+  const saveTx = db.transaction((cats) => {
+    db.prepare("DELETE FROM rubric_categories").run();
+    const insert = db.prepare(
+      "INSERT INTO rubric_categories (id, name, weight, description, sort_order) VALUES (?, ?, ?, ?, ?)"
+    );
+    for (const cat of cats) {
+      insert.run(cat.id || uuid(), cat.name, cat.weight, cat.description || "", cat.sortOrder ?? 0);
+    }
+  });
+  saveTx(categories);
+  return getRubricCategories();
+}
+
+function getRubricThresholds() {
+  const raw = getMeta("rubric_thresholds");
+  return raw ? JSON.parse(raw) : null;
+}
+
+function saveRubricThresholds(thresholds) {
+  setMeta("rubric_thresholds", JSON.stringify(thresholds));
+}
+
+// Agent Tasks
+function rowToAgentTask(row) {
+  return {
+    id: row.id,
+    prId: row.pr_id,
+    taskType: row.task_type,
+    status: row.status,
+    cli: row.cli,
+    result: row.result ? JSON.parse(row.result) : null,
+    tokenEstimate: row.token_estimate,
+    logFile: row.log_file,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+  };
+}
+
+function getAgentTasks() {
+  return db.prepare("SELECT * FROM agent_tasks ORDER BY started_at DESC").all().map(rowToAgentTask);
+}
+
+function getAgentTask(id) {
+  const row = db.prepare("SELECT * FROM agent_tasks WHERE id = ?").get(id);
+  return row ? rowToAgentTask(row) : null;
+}
+
+function createAgentTask({ id, prId, taskType, cli }) {
+  const taskId = id || uuid();
+  db.prepare(
+    "INSERT INTO agent_tasks (id, pr_id, task_type, status, cli, started_at) VALUES (?, ?, ?, 'pending', ?, datetime('now'))"
+  ).run(taskId, prId || null, taskType, cli || null);
+  return getAgentTask(taskId);
+}
+
+function updateAgentTask(id, fields) {
+  const colMap = {
+    status: "status", result: "result", tokenEstimate: "token_estimate",
+    logFile: "log_file", startedAt: "started_at", completedAt: "completed_at",
+  };
+  const sets = [];
+  const values = [];
+  for (const [key, col] of Object.entries(colMap)) {
+    if (key in fields) {
+      sets.push(`${col} = ?`);
+      values.push(key === "result" && fields[key] ? JSON.stringify(fields[key]) : (fields[key] ?? null));
+    }
+  }
+  if (sets.length === 0) return getAgentTask(id);
+  values.push(id);
+  db.prepare(`UPDATE agent_tasks SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+  return getAgentTask(id);
+}
+
+function clearAgentTask(id) {
+  db.prepare("DELETE FROM agent_tasks WHERE id = ?").run(id);
+}
+
+function clearCompletedAgentTasks() {
+  db.prepare("DELETE FROM agent_tasks WHERE status IN ('done', 'error')").run();
+}
+
 // Export / Import
 function exportConfig() {
   const home = os.homedir();
@@ -289,4 +512,7 @@ module.exports = {
   getProjects, createProject, updateProject, getProjectById, deleteProject,
   exportConfig, importConfig,
   getTools, createTool, deleteTool, updateTool,
+  getPrCache, upsertPrCache, cleanupPrCache, updatePrState,
+  getRubricCategories, saveRubricCategories, getRubricThresholds, saveRubricThresholds,
+  getAgentTasks, getAgentTask, createAgentTask, updateAgentTask, clearAgentTask, clearCompletedAgentTasks,
 };
