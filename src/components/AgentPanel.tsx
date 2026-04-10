@@ -192,7 +192,10 @@ function AgentTaskRow({ task, onCancel, onClear, onView }: AgentTaskRowProps) {
         : <Circle size={12} className="fill-wo-text-tertiary text-wo-text-tertiary" />;
 
   return (
-    <div className="flex items-center gap-3 p-3 border border-wo-border rounded-lg bg-wo-bg-elevated">
+    <div
+      className="flex items-center gap-3 p-3 border border-wo-border rounded-lg bg-wo-bg-elevated cursor-pointer hover:bg-wo-bg-subtle/50 transition-colors"
+      onClick={onView}
+    >
       {statusIcon}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -211,7 +214,7 @@ function AgentTaskRow({ task, onCancel, onClear, onView }: AgentTaskRowProps) {
         {task.status === "running" ? (
           <button
             type="button"
-            onClick={onCancel}
+            onClick={(e) => { e.stopPropagation(); onCancel(); }}
             className="p-1.5 rounded-md text-wo-danger hover:bg-wo-bg-subtle transition-colors"
             title="Cancel"
           >
@@ -221,7 +224,7 @@ function AgentTaskRow({ task, onCancel, onClear, onView }: AgentTaskRowProps) {
           <>
             <button
               type="button"
-              onClick={onView}
+              onClick={(e) => { e.stopPropagation(); onView(); }}
               className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
               title="View output"
             >
@@ -229,7 +232,7 @@ function AgentTaskRow({ task, onCancel, onClear, onView }: AgentTaskRowProps) {
             </button>
             <button
               type="button"
-              onClick={onClear}
+              onClick={(e) => { e.stopPropagation(); onClear(); }}
               className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-danger hover:bg-wo-bg-subtle transition-colors"
               title="Clear"
             >
