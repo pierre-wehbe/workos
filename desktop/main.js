@@ -18,6 +18,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: "hiddenInset",
+    icon: path.join(__dirname, process.platform === "darwin" ? "../assets/icon.icns" : "../assets/icon.png"),
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#0f1512" : "#f8faf9",
     webPreferences: {
       contextIsolation: true,
