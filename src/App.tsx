@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { Sidebar } from "./components/Sidebar";
 import { OnboardingPage } from "./pages/onboarding/OnboardingPage";
@@ -49,6 +49,40 @@ export default function App() {
   useEffect(() => {
     loadPrCacheMap();
   }, [loadPrCacheMap, agentTasks]);
+
+  // Global agent result processor: writes completed summarize tasks to pr_cache
+  // This runs in App so it works regardless of which page is mounted
+  const processedAgentIds = useRef(new Set<string>());
+  useEffect(() => {
+    for (const task of agentTasks) {
+      if (task.taskType !== "summarize" || task.status !== "completed" || !task.result) continue;
+      if (processedAgentIds.current.has(task.id)) continue;
+      processedAgentIds.current.add(task.id);
+
+      let rubricResult = null;
+      const rubricMatch = task.result.match(/<!-- RUBRIC_JSON\s+(\{[\s\S]*?\})\s*-->/);
+      if (rubricMatch) {
+        try { rubricResult = JSON.parse(rubricMatch[1]); } catch {}
+      }
+      const summary = task.result.replace(/<!-- RUBRIC_JSON\s+\{[\s\S]*?\}\s*-->/, "").trim();
+
+      // Read existing cache to append (not overwrite) analyses
+      ipc.getPrCache(task.prId).then((existing) => {
+        const prevAnalyses = existing?.analyses ?? [];
+        const newEntry = {
+          headSha: existing?.headSha ?? "unknown",
+          timestamp: task.completedAt ?? new Date().toISOString(),
+          summary,
+          rubricResult,
+          cli: task.cli,
+        };
+        ipc.upsertPrCache(task.prId, {
+          analyses: [...prevAnalyses, newEntry],
+          lastAnalyzedAt: newEntry.timestamp,
+        }).then(() => loadPrCacheMap());
+      });
+    }
+  }, [agentTasks, loadPrCacheMap]);
 
   const handleAnalyzePR = useCallback(async (pr: GitHubPR) => {
     const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;

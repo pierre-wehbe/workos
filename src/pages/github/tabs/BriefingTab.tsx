@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bot, ChevronDown, ChevronRight, Clock, FileText, Loader2, RefreshCw, Zap } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { PRDetail, PRCacheEntry, AnalysisEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
+import type { PRDetail, PRCacheEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
 
 interface BriefingTabProps {
   prDetail: PRDetail | null;
@@ -37,7 +37,6 @@ export function BriefingTab({
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
-  const processedTaskIds = useRef(new Set<string>());
 
   const analyses = cache?.analyses ?? [];
   const latest = analyses[analyses.length - 1] ?? null;
@@ -48,40 +47,8 @@ export function BriefingTab({
   const myTasks = agentTasks.filter((t) => t.prId === prId && t.taskType === "summarize");
   const isAgentRunning = myTasks.some((t) => t.status === "running");
 
-  // Reactively detect completed tasks and append to analyses
-  useEffect(() => {
-    for (const task of myTasks) {
-      if (task.status !== "completed" || !task.result) continue;
-      if (processedTaskIds.current.has(task.id)) continue;
-
-      processedTaskIds.current.add(task.id);
-      setAnalyzing(false);
-
-      let rubricResult = null;
-      const rubricMatch = task.result.match(/<!-- RUBRIC_JSON\s+(\{[\s\S]*?\})\s*-->/);
-      if (rubricMatch) {
-        try { rubricResult = JSON.parse(rubricMatch[1]); } catch {}
-      }
-
-      const summary = task.result.replace(/<!-- RUBRIC_JSON\s+\{[\s\S]*?\}\s*-->/, "").trim();
-
-      const newEntry: AnalysisEntry = {
-        headSha: prDetail?.headSha ?? "unknown",
-        timestamp: task.completedAt ?? new Date().toISOString(),
-        summary,
-        rubricResult,
-        cli: task.cli,
-      };
-
-      const updatedAnalyses = [...(cache?.analyses ?? []), newEntry];
-      onUpdateCache(prId, {
-        analyses: updatedAnalyses,
-        lastAnalyzedAt: newEntry.timestamp,
-      });
-      break;
-    }
-  }, [agentTasks, prId, onUpdateCache, cache?.analyses, prDetail?.headSha]);
-
+  // Agent result processing is handled globally in App.tsx
+  // BriefingTab just tracks the analyzing spinner state
   useEffect(() => {
     if (isAgentRunning) setAnalyzing(true);
     else if (analyzing && myTasks.some((t) => t.status === "completed" || t.status === "failed")) {
