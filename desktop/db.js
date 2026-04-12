@@ -375,6 +375,10 @@ function upsertPrCache(prId, fields) {
   return getPrCache(prId);
 }
 
+function listPrCaches() {
+  return db.prepare("SELECT * FROM pr_cache WHERE pr_state = 'OPEN'").all().map(rowToPrCache);
+}
+
 function cleanupPrCache() {
   db.prepare("DELETE FROM pr_cache WHERE pr_state IN ('MERGED', 'CLOSED')").run();
 }
@@ -527,7 +531,7 @@ module.exports = {
   getProjects, createProject, updateProject, getProjectById, deleteProject,
   exportConfig, importConfig,
   getTools, createTool, deleteTool, updateTool,
-  getPrCache, upsertPrCache, cleanupPrCache, updatePrState,
+  getPrCache, listPrCaches, upsertPrCache, cleanupPrCache, updatePrState,
   getRubricCategories, saveRubricCategories, getRubricThresholds, saveRubricThresholds,
   getAgentTasks, getAgentTask, createAgentTask, updateAgentTask, clearAgentTask, clearCompletedAgentTasks,
 };

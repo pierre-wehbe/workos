@@ -1,9 +1,15 @@
-import { ClipboardList, TrendingDown, TrendingUp, Minus } from "lucide-react";
-import type { PRCacheEntry, RubricThresholds, AnalysisEntry } from "../../../lib/pr-types";
+import { useState } from "react";
+import { Bot, ChevronDown, ChevronRight, ClipboardList, Copy, MessageSquare, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import type { PRCacheEntry, PRDetail, RubricThresholds, AgentTask } from "../../../lib/pr-types";
 
 interface RubricTabProps {
   cache: PRCacheEntry | null;
   rubricThresholds: RubricThresholds;
+  prId: string;
+  prDetail: PRDetail | null;
+  selectedCli: string;
+  onStartAgent: (data: { prId: string; taskType: string; cli: string; prompt: string }) => Promise<AgentTask>;
+  onPostComment: (body: string) => Promise<void>;
 }
 
 function scoreColor(score: number, max: number) {
@@ -19,12 +25,14 @@ function barColor(pct: number) {
   return "bg-wo-warning";
 }
 
-export function RubricTab({ cache, rubricThresholds }: RubricTabProps) {
+export function RubricTab({ cache, rubricThresholds, prId, prDetail, selectedCli, onStartAgent, onPostComment }: RubricTabProps) {
   const analyses = cache?.analyses ?? [];
   const scoredAnalyses = analyses.filter((a) => a.rubricResult);
   const latest = scoredAnalyses[scoredAnalyses.length - 1] ?? null;
   const previous = scoredAnalyses.length > 1 ? scoredAnalyses[scoredAnalyses.length - 2] : null;
   const result = latest?.rubricResult;
+  const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+  const [copiedCat, setCopiedCat] = useState<string | null>(null);
 
   if (!result) {
     return (
@@ -89,6 +97,30 @@ export function RubricTab({ cache, rubricThresholds }: RubricTabProps) {
             const pct = (cat.score / cat.maxScore) * 100;
             const prevCat = previous?.rubricResult?.categories.find((c) => c.name === cat.name);
             const delta = prevCat ? cat.score - prevCat.score : null;
+            const isExpanded = expandedSuggestion === cat.name;
+            const suggestionText = `To improve **${cat.name}** from ${cat.score}/${cat.maxScore} to ${cat.maxScore}/${cat.maxScore}: ${cat.explanation}`;
+
+            const handleCopy = async () => {
+              await navigator.clipboard.writeText(suggestionText);
+              setCopiedCat(cat.name);
+              setTimeout(() => setCopiedCat(null), 2000);
+            };
+
+            const handlePostComment = async () => {
+              await onPostComment(suggestionText);
+            };
+
+            const handleFixWithAgent = () => {
+              const prompt = `For PR ${prId}: "${prDetail?.title ?? ""}"
+
+The rubric category "${cat.name}" scored ${cat.score}/${cat.maxScore}.
+
+Current assessment: ${cat.explanation}
+
+Please analyze the PR code and suggest specific, actionable changes to improve the "${cat.name}" score to ${cat.maxScore}/${cat.maxScore}. Focus on concrete code changes, not general advice.`;
+              onStartAgent({ prId, taskType: "implement_fix", cli: selectedCli, prompt });
+            };
+
             return (
               <div key={cat.name} className="p-4 rounded-lg border border-wo-border bg-wo-bg-elevated">
                 <div className="flex items-center justify-between mb-2">
@@ -109,6 +141,53 @@ export function RubricTab({ cache, rubricThresholds }: RubricTabProps) {
                 </div>
                 {cat.explanation && (
                   <p className="text-xs text-wo-text-secondary leading-relaxed">{cat.explanation}</p>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSuggestion(isExpanded ? null : cat.name)}
+                    className="flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium text-wo-text-tertiary hover:text-wo-text-secondary bg-wo-bg-subtle hover:bg-wo-bg transition-colors"
+                  >
+                    {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                    Suggest improvements
+                  </button>
+                  {cat.score < 8 && (
+                    <button
+                      type="button"
+                      onClick={handleFixWithAgent}
+                      className="flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium text-wo-text-tertiary hover:text-wo-accent bg-wo-bg-subtle hover:bg-wo-bg transition-colors"
+                    >
+                      <Bot size={10} />
+                      Fix with Agent
+                    </button>
+                  )}
+                </div>
+
+                {/* Expanded suggestion */}
+                {isExpanded && (
+                  <div className="mt-2 p-3 rounded-md border border-wo-border bg-wo-bg text-xs text-wo-text-secondary leading-relaxed">
+                    <p>{suggestionText}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={handleCopy}
+                        className="flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium text-wo-text-tertiary hover:text-wo-text-secondary bg-wo-bg-subtle hover:bg-wo-bg transition-colors"
+                      >
+                        <Copy size={10} />
+                        {copiedCat === cat.name ? "Copied!" : "Copy"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePostComment}
+                        className="flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium text-wo-text-tertiary hover:text-wo-accent bg-wo-bg-subtle hover:bg-wo-bg transition-colors"
+                      >
+                        <MessageSquare size={10} />
+                        Post as Review Comment
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );

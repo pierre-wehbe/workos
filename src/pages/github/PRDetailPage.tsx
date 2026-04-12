@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft, Clock, ExternalLink, GitPullRequest, Loader2,
 } from "lucide-react";
 import type { GitHubPR } from "../../lib/types";
 import type { RubricCategory, RubricThresholds, AgentTask } from "../../lib/pr-types";
 import { usePRDetail } from "../../lib/use-pr-detail";
+import { ipc } from "../../lib/ipc";
 import { BriefingTab } from "./tabs/BriefingTab";
 import { CommentsTab } from "./tabs/CommentsTab";
 import { RubricTab } from "./tabs/RubricTab";
@@ -33,6 +34,10 @@ export function PRDetailPage({
   const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
   const isAuthor = !!(username && pr.author.toLowerCase() === username.toLowerCase());
   const commentCount = prDetail?.reviewThreads.length ?? 0;
+
+  const handlePostComment = useCallback(async (body: string) => {
+    await ipc.postPRComment(pr.owner, pr.repoName, pr.number, body);
+  }, [pr.owner, pr.repoName, pr.number]);
 
   useEffect(() => {
     fetchDetail(pr.owner, pr.repoName, pr.number);
@@ -150,7 +155,15 @@ export function PRDetailPage({
           />
         )}
         {activeTab === "rubric" && (
-          <RubricTab cache={cache} rubricThresholds={rubricThresholds} />
+          <RubricTab
+            cache={cache}
+            rubricThresholds={rubricThresholds}
+            prId={prId}
+            prDetail={prDetail}
+            selectedCli={selectedCli}
+            onStartAgent={onStartAgent}
+            onPostComment={handlePostComment}
+          />
         )}
         {activeTab === "actions" && (
           <ActionsTab

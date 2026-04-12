@@ -122,6 +122,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // PR Cache
   getPrCache: (prId) => ipcRenderer.invoke("pr-cache:get", prId),
+  listPrCaches: () => ipcRenderer.invoke("pr-cache:list"),
   upsertPrCache: (prId, fields) => ipcRenderer.invoke("pr-cache:upsert", prId, fields),
   cleanupPrCache: () => ipcRenderer.invoke("pr-cache:cleanup"),
 

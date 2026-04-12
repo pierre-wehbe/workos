@@ -1,9 +1,10 @@
 import { useState } from "react";
 import {
-  Check, Clock, Eye, Filter, GitPullRequest,
+  Bot, Check, Clock, Eye, Filter, GitPullRequest,
   Loader2, MessageSquare, RefreshCw,
 } from "lucide-react";
 import type { GitHubPR, GitHubData, Project, Workspace } from "../../lib/types";
+import type { PRCacheEntry, AgentTask } from "../../lib/pr-types";
 
 interface GitHubPageProps {
   data: GitHubData;
@@ -12,6 +13,9 @@ interface GitHubPageProps {
   projects: Project[];
   activeWorkspace: Workspace | null;
   onOpenPR: (pr: GitHubPR) => void;
+  prCacheMap: Record<string, PRCacheEntry>;
+  agentTasks: AgentTask[];
+  onAnalyzePR: (pr: GitHubPR) => void;
 }
 
 function ReviewBadge({ decision }: { decision: GitHubPR["reviewDecision"] }) {
@@ -31,7 +35,49 @@ function ReviewBadge({ decision }: { decision: GitHubPR["reviewDecision"] }) {
   );
 }
 
-function PRRow({ pr, onOpen }: { pr: GitHubPR; onOpen: (pr: GitHubPR) => void }) {
+function AnalysisBadge({ cache, pr, agentTasks }: { cache: PRCacheEntry | undefined; pr: GitHubPR; agentTasks: AgentTask[] }) {
+  const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
+  const isAgentRunning = agentTasks.some((t) => t.prId === prId && t.taskType === "summarize" && t.status === "running");
+
+  if (isAgentRunning) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[rgba(161,98,7,0.1)] text-wo-warning text-[10px] font-semibold">
+        <Loader2 size={9} className="animate-spin" /> Analyzing
+      </span>
+    );
+  }
+
+  if (!cache) return null;
+  const latest = cache.analyses?.[cache.analyses.length - 1];
+  if (!latest) return null;
+
+  const isStale = !!(cache.headSha && latest.headSha && latest.headSha !== cache.headSha);
+  if (isStale) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[rgba(161,98,7,0.1)] text-wo-warning text-[10px] font-semibold">
+        Stale
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[rgba(21,128,61,0.1)] text-wo-success text-[10px] font-semibold">
+      <Check size={9} /> Analyzed
+    </span>
+  );
+}
+
+function PRRow({ pr, onOpen, cache, agentTasks, onAnalyze }: {
+  pr: GitHubPR;
+  onOpen: (pr: GitHubPR) => void;
+  cache: PRCacheEntry | undefined;
+  agentTasks: AgentTask[];
+  onAnalyze: (pr: GitHubPR) => void;
+}) {
+  const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
+  const hasAnalysis = !!(cache?.analyses?.length);
+  const isAgentRunning = agentTasks.some((t) => t.prId === prId && t.taskType === "summarize" && t.status === "running");
+
   return (
     <button
       type="button"
@@ -43,6 +89,7 @@ function PRRow({ pr, onOpen }: { pr: GitHubPR; onOpen: (pr: GitHubPR) => void })
           <span className="text-[11px] font-mono text-wo-text-tertiary">{pr.repo}#{pr.number}</span>
           {pr.isDraft && <span className="px-1.5 py-0.5 rounded bg-wo-bg-subtle text-[10px] text-wo-text-tertiary">Draft</span>}
           <ReviewBadge decision={pr.reviewDecision} />
+          <AnalysisBadge cache={cache} pr={pr} agentTasks={agentTasks} />
         </div>
         <p className="text-sm font-medium truncate">{pr.title}</p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -55,6 +102,16 @@ function PRRow({ pr, onOpen }: { pr: GitHubPR; onOpen: (pr: GitHubPR) => void })
           ))}
         </div>
       </div>
+      {!hasAnalysis && !isAgentRunning && (
+        <button
+          type="button"
+          title="Analyze PR"
+          onClick={(e) => { e.stopPropagation(); onAnalyze(pr); }}
+          className="shrink-0 flex items-center justify-center w-7 h-7 rounded-md border border-wo-border text-wo-text-tertiary hover:text-wo-accent hover:border-wo-accent/30 transition-colors"
+        >
+          <Bot size={14} />
+        </button>
+      )}
     </button>
   );
 }
@@ -71,7 +128,7 @@ function FilterChip({ label, active, count, onClick }: { label: string; active: 
   );
 }
 
-export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace, onOpenPR }: GitHubPageProps) {
+export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace, onOpenPR, prCacheMap, agentTasks, onAnalyzePR }: GitHubPageProps) {
   const [tab, setTab] = useState<"my-prs" | "reviews">("reviews");
   const [filterScope, setFilterScope] = useState<"workspace" | "all">("workspace");
   const [showDrafts, setShowDrafts] = useState(true);
@@ -206,7 +263,19 @@ export function GitHubPage({ data, loading, onRefresh, projects, activeWorkspace
             )}
           </div>
         )}
-        {filtered.map((pr) => <PRRow key={pr.id} pr={pr} onOpen={onOpenPR} />)}
+        {filtered.map((pr) => {
+          const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
+          return (
+            <PRRow
+              key={pr.id}
+              pr={pr}
+              onOpen={onOpenPR}
+              cache={prCacheMap[prId]}
+              agentTasks={agentTasks}
+              onAnalyze={onAnalyzePR}
+            />
+          );
+        })}
       </div>
     </div>
   );

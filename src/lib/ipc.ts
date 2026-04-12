@@ -87,6 +87,7 @@ export const ipc = {
   saveRubricThresholds: (thresholds: import("./pr-types").RubricThresholds) => api.saveRubricThresholds(thresholds),
   // PR Cache
   getPrCache: (prId: string) => api.getPrCache(prId),
+  listPrCaches: () => api.listPrCaches(),
   upsertPrCache: (prId: string, fields: Partial<import("./pr-types").PRCacheEntry>) => api.upsertPrCache(prId, fields),
   cleanupPrCache: () => api.cleanupPrCache(),
 } as const;

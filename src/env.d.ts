@@ -112,7 +112,7 @@ interface ElectronAPI {
   resolveThread: (owner: string, repo: string, number: number, threadId: string) => Promise<{ ok: boolean }>;
 
   // Agents
-  startAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string }) => Promise<import("./lib/pr-types").AgentTask>;
+  startAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string; reasoningEffort?: string; changedFiles?: number; changedLines?: number }) => Promise<import("./lib/pr-types").AgentTask>;
   cancelAgent: (id: string) => Promise<void>;
   listAgents: () => Promise<import("./lib/pr-types").AgentTask[]>;
   getAgentLogs: (id: string) => Promise<string>;
@@ -132,6 +132,7 @@ interface ElectronAPI {
 
   // PR Cache
   getPrCache: (prId: string) => Promise<import("./lib/pr-types").PRCacheEntry | null>;
+  listPrCaches: () => Promise<import("./lib/pr-types").PRCacheEntry[]>;
   upsertPrCache: (prId: string, fields: Partial<import("./lib/pr-types").PRCacheEntry>) => Promise<void>;
   cleanupPrCache: () => Promise<void>;
 }

@@ -266,6 +266,7 @@ app.whenReady().then(() => {
 
   // --- PR Cache ---
   ipcMain.handle("pr-cache:get", (_e, prId) => db.getPrCache(prId));
+  ipcMain.handle("pr-cache:list", () => db.listPrCaches());
   ipcMain.handle("pr-cache:upsert", (_e, prId, fields) => db.upsertPrCache(prId, fields));
   ipcMain.handle("pr-cache:cleanup", () => db.cleanupPrCache());
 

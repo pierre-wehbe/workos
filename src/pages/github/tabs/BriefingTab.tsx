@@ -106,7 +106,16 @@ export function BriefingTab({
     const rubricSection = rubricCategories.length > 0
       ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}`
       : "";
-    const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}\n\nProvide your response in markdown format:\n1. A **Summary** section (2-4 sentences)\n2. A **Key Changes** section (bullet list by file)\n3. A **Scoring** section with a markdown table of rubric categories${rubricSection}\n\nIMPORTANT: At the very end of your response, include this exact JSON block so it can be parsed programmatically:\n<!-- RUBRIC_JSON {"overallScore": <number 0-100>, "categories": [{"name": "<category name>", "score": <1-10>, "maxScore": 10, "explanation": "<1 sentence>"}]} -->`;
+    const unresolvedComments = prDetail?.reviewThreads
+      ?.filter((t) => !t.isResolved)
+      .map((t) => {
+        const lastComment = t.comments[t.comments.length - 1];
+        return `[UNRESOLVED] ${t.path ?? "general"}${t.line ? `:${t.line}` : ""} — @${lastComment?.author}: "${lastComment?.body}"`;
+      }).join("\n") ?? "";
+    const commentsSection = unresolvedComments
+      ? `\n\nUnresolved review comments (note if they've been addressed by the current diff or are still outstanding):\n${unresolvedComments}`
+      : "";
+    const prompt = `Analyze PR ${prId}: "${prDetail?.title ?? ""}"\nAuthor: ${prDetail?.author ?? "unknown"}\nFiles changed (${prDetail?.changedFiles ?? 0}): +${prDetail?.additions ?? 0} -${prDetail?.deletions ?? 0}\n${fileList}${commentsSection}\n\nProvide your response in markdown format:\n1. A **Summary** section (2-4 sentences)\n2. A **Key Changes** section (bullet list by file)\n3. A **Scoring** section with a markdown table of rubric categories${rubricSection}\n\nIMPORTANT: At the very end of your response, include this exact JSON block so it can be parsed programmatically:\n<!-- RUBRIC_JSON {"overallScore": <number 0-100>, "categories": [{"name": "<category name>", "score": <1-10>, "maxScore": 10, "explanation": "<1 sentence>"}]} -->`;
     await onStartAgent({
       prId,
       taskType: "summarize",
