@@ -220,30 +220,33 @@ export default function App() {
                   onProjectsChanged={refreshProjects}
                 />
               ) : view === "github" ? (
-                selectedPR ? (
-                  <PRDetailPage
-                    pr={selectedPR}
-                    username={github.username}
-                    selectedCli={selectedAICli}
-                    rubricCategories={rubricCategories}
-                    rubricThresholds={rubricThresholds}
-                    agentTasks={agentTasks}
-                    onStartAgent={startAgent}
-                    onBack={() => setSelectedPR(null)}
-                  />
-                ) : (
-                  <GitHubPage
-                    data={github}
-                    loading={github.loading}
-                    onRefresh={github.refresh}
-                    projects={allProjects}
-                    activeWorkspace={activeWorkspace}
-                    onOpenPR={setSelectedPR}
-                    prCacheMap={prCacheMap}
-                    agentTasks={agentTasks}
-                    onAnalyzePR={handleAnalyzePR}
-                  />
-                )
+                <>
+                  {selectedPR && (
+                    <PRDetailPage
+                      pr={selectedPR}
+                      username={github.username}
+                      selectedCli={selectedAICli}
+                      rubricCategories={rubricCategories}
+                      rubricThresholds={rubricThresholds}
+                      agentTasks={agentTasks}
+                      onStartAgent={startAgent}
+                      onBack={() => setSelectedPR(null)}
+                    />
+                  )}
+                  <div className={selectedPR ? "hidden" : "contents"}>
+                    <GitHubPage
+                      data={github}
+                      loading={github.loading}
+                      onRefresh={github.refresh}
+                      projects={allProjects}
+                      activeWorkspace={activeWorkspace}
+                      onOpenPR={setSelectedPR}
+                      prCacheMap={prCacheMap}
+                      agentTasks={agentTasks}
+                      onAnalyzePR={handleAnalyzePR}
+                    />
+                  </div>
+                </>
               ) : view === "settings" ? (
                 <SettingsPage
                   workspaces={workspaces}
