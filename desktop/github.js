@@ -29,7 +29,7 @@ async function getUsername() {
 async function fetchMyPRs() {
   const raw = await gh([
     "search", "prs",
-    "--author=@me", "--state=open",
+    "--author=@me", "--state=open", "--archived=false",
     "--json", "repository,number,title,state,isDraft,url,updatedAt,author,labels",
     "--limit", "50",
   ]);
@@ -43,7 +43,7 @@ async function fetchMyPRs() {
 async function fetchReviewRequests() {
   const raw = await gh([
     "search", "prs",
-    "--review-requested=@me", "--state=open",
+    "--review-requested=@me", "--state=open", "--archived=false",
     "--json", "repository,number,title,state,isDraft,url,updatedAt,author,labels",
     "--limit", "50",
   ]);
