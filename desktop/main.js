@@ -242,6 +242,7 @@ app.whenReady().then(() => {
 
   // --- PR Detail ---
   ipcMain.handle("pr:fetch-detail", (_e, owner, repo, number) => prDetail.fetchPRDetail(owner, repo, number));
+  ipcMain.handle("pr:fetch-head-sha", (_e, owner, repo, number) => prDetail.fetchPRHeadSha(owner, repo, number));
   ipcMain.handle("pr:post-comment", (_e, owner, repo, number, body) => prDetail.postComment(owner, repo, number, body));
   ipcMain.handle("pr:reply-to-thread", (_e, owner, repo, number, commentId, body) => prDetail.replyToThread(owner, repo, number, commentId, body));
   ipcMain.handle("pr:submit-review", (_e, owner, repo, number, event, body) => prDetail.submitReview(owner, repo, number, event, body));

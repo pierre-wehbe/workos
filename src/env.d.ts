@@ -106,6 +106,7 @@ interface ElectronAPI {
 
   // PR Detail
   fetchPRDetail: (owner: string, repo: string, number: number) => Promise<import("./lib/pr-types").PRDetail | null>;
+  fetchPRHeadSha: (owner: string, repo: string, number: number) => Promise<string | null>;
   postPRComment: (owner: string, repo: string, number: number, body: string) => Promise<{ ok: boolean }>;
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => Promise<{ ok: boolean }>;
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => Promise<{ ok: boolean }>;

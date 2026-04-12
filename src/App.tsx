@@ -51,7 +51,7 @@ export default function App() {
   }, [loadPrCacheMap, agentTasks]);
 
   // Global agent result processor: writes completed summarize tasks to pr_cache
-  // This runs in App so it works regardless of which page is mounted
+  // Runs in App so it works from the list page, detail page, or any view
   const processedAgentIds = useRef(new Set<string>());
   useEffect(() => {
     for (const task of agentTasks) {
@@ -66,7 +66,6 @@ export default function App() {
       }
       const summary = task.result.replace(/<!-- RUBRIC_JSON\s+\{[\s\S]*?\}\s*-->/, "").trim();
 
-      // Read existing cache to append (not overwrite) analyses
       ipc.getPrCache(task.prId).then((existing) => {
         const prevAnalyses = existing?.analyses ?? [];
         const newEntry = {
@@ -84,8 +83,18 @@ export default function App() {
     }
   }, [agentTasks, loadPrCacheMap]);
 
+  // Analyze PR: fetches headSha first, ensures cache entry exists with correct SHA, then starts agent
   const handleAnalyzePR = useCallback(async (pr: GitHubPR) => {
     const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
+
+    // Fetch current headSha from GitHub (lightweight GraphQL call)
+    const headSha = await ipc.fetchPRHeadSha(pr.owner, pr.repoName, pr.number);
+
+    // Ensure pr_cache entry exists with correct headSha
+    if (headSha) {
+      await ipc.upsertPrCache(prId, { prState: "OPEN", headSha });
+    }
+
     const rubricSection = rubricCategories.length > 0
       ? `\n\nScore against these rubric categories (1-10 each):\n${rubricCategories.map((c) => `- ${c.name} (weight: ${c.weight}%): ${c.description}`).join("\n")}`
       : "";

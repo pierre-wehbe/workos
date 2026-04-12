@@ -180,4 +180,19 @@ async function resolveThread(owner, repo, number, threadId) {
   }
 }
 
-module.exports = { fetchPRDetail, postComment, replyToThread, submitReview, resolveThread };
+// Lightweight: fetch just the head SHA for a PR (fast, minimal data)
+async function fetchPRHeadSha(owner, repo, number) {
+  const raw = await gh([
+    "api", "graphql",
+    "-F", `owner=${owner}`,
+    "-F", `repo=${repo}`,
+    "-F", `number=${number}`,
+    "-f", `query=query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){headRefOid}}}`,
+  ]);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw)?.data?.repository?.pullRequest?.headRefOid ?? null;
+  } catch { return null; }
+}
+
+module.exports = { fetchPRDetail, fetchPRHeadSha, postComment, replyToThread, submitReview, resolveThread };

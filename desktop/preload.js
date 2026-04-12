@@ -88,6 +88,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // PR Detail
   fetchPRDetail: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-detail", owner, repo, number),
+  fetchPRHeadSha: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-head-sha", owner, repo, number),
   postPRComment: (owner, repo, number, body) => ipcRenderer.invoke("pr:post-comment", owner, repo, number, body),
   replyToThread: (owner, repo, number, commentId, body) => ipcRenderer.invoke("pr:reply-to-thread", owner, repo, number, commentId, body),
   submitReview: (owner, repo, number, event, body) => ipcRenderer.invoke("pr:submit-review", owner, repo, number, event, body),

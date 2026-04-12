@@ -64,6 +64,7 @@ export const ipc = {
   onGithubUpdate: (cb: (data: import("./types").GitHubData) => void) => api.onGithubUpdate(cb),
   // PR Detail
   fetchPRDetail: (owner: string, repo: string, number: number) => api.fetchPRDetail(owner, repo, number),
+  fetchPRHeadSha: (owner: string, repo: string, number: number) => api.fetchPRHeadSha(owner, repo, number),
   postPRComment: (owner: string, repo: string, number: number, body: string) => api.postPRComment(owner, repo, number, body),
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => api.replyToThread(owner, repo, number, commentId, body),
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => api.submitReview(owner, repo, number, event, body),
