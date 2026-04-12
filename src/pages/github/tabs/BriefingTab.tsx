@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, ChevronRight, Clock, FileText, Loader2, RefreshCw, Zap } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { PRDetail, PRCacheEntry, AnalysisEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
 
 interface BriefingTabProps {
@@ -182,7 +183,7 @@ export function BriefingTab({
 
           {/* Markdown summary */}
           <div className="prose-sm prose-wo">
-            <Markdown>{latest.summary}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]}>{latest.summary}</Markdown>
           </div>
 
           {/* Re-analyze */}
@@ -271,7 +272,7 @@ export function BriefingTab({
                         </div>
                       )}
                       <div className="prose-xs prose-wo mt-2">
-                        <Markdown>{entry.summary}</Markdown>
+                        <Markdown remarkPlugins={[remarkGfm]}>{entry.summary}</Markdown>
                       </div>
                     </div>
                   )}
