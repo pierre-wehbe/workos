@@ -90,6 +90,33 @@ describe("cleanAgentOutput", () => {
     expect(result).not.toContain("OpenAI Codex");
     expect(result).not.toContain("mcp: tool started");
   });
+
+  it("handles real codex output with ANSI escape codes around token marker", () => {
+    // Real codex output uses ANSI around "tokens used": \x1b[2mtokens used\x1b[0m
+    const boilerplate = "\x1b[1mworkdir:\x1b[0m /path\n\x1b[1mmodel:\x1b[0m gpt-5.4\n--------\n";
+    const session = "\x1b[36muser\x1b[0m\nSome prompt\n\x1b[35m\x1b[3mcodex\x1b[0m\x1b[0m\nLet me analyze...\n\x1b[1mmcp:\x1b[0m \x1b[36mtool\x1b[0m \x1b[2mstarted\x1b[0m\n";
+    const content = "**Summary**\nThis PR reorganizes env management.\n\n| Category | Score |\n|---|---:|\n| Code Clarity | 8/10 |\n\n<!-- RUBRIC_JSON {\"overallScore\": 71, \"categories\": [{\"name\": \"Code Clarity\", \"score\": 8, \"maxScore\": 10, \"explanation\": \"Clean\"}]} -->";
+    const tokenLine = "\x1b[2mtokens used\x1b[0m\n41,411\n";
+    const fullOutput = boilerplate + session + content + "\n" + tokenLine + content;
+
+    const result = cleanAgentOutput(fullOutput);
+
+    // Must not contain any ANSI codes
+    expect(result).not.toMatch(/\x1b/);
+    // Must not contain codex boilerplate
+    expect(result).not.toContain("workdir:");
+    expect(result).not.toContain("mcp:");
+    expect(result).not.toContain("Let me analyze");
+    expect(result).not.toContain("tokens used");
+    // Must contain the clean summary
+    expect(result).toContain("**Summary**");
+    expect(result).toContain("This PR reorganizes env management.");
+    expect(result).toContain("RUBRIC_JSON");
+    // RUBRIC_JSON must be parseable
+    const rubricMatch = result.match(/<!-- RUBRIC_JSON\s+(\{[\s\S]*?\})\s*-->/);
+    expect(rubricMatch).not.toBeNull();
+    expect(JSON.parse(rubricMatch[1]).overallScore).toBe(71);
+  });
 });
 
 describe("RUBRIC_JSON parsing", () => {

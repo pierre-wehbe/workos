@@ -142,7 +142,7 @@ function startTask({ prId, taskType, cli, prompt, workingDir, reasoningEffort, c
 
     db.updateAgentTask(id, {
       status: entry.status,
-      result: output,
+      result: entry.result,
       tokenEstimate: entry.tokenEstimate,
       completedAt: entry.completedAt,
     });
