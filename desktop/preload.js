@@ -93,6 +93,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   replyToThread: (owner, repo, number, commentId, body) => ipcRenderer.invoke("pr:reply-to-thread", owner, repo, number, commentId, body),
   submitReview: (owner, repo, number, event, body) => ipcRenderer.invoke("pr:submit-review", owner, repo, number, event, body),
   resolveThread: (owner, repo, number, threadId) => ipcRenderer.invoke("pr:resolve-thread", owner, repo, number, threadId),
+  closePR: (owner, repo, number) => ipcRenderer.invoke("pr:close", owner, repo, number),
 
   // Agents
   startAgent: (data) => ipcRenderer.invoke("agent:start", data),

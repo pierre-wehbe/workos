@@ -247,6 +247,7 @@ app.whenReady().then(() => {
   ipcMain.handle("pr:reply-to-thread", (_e, owner, repo, number, commentId, body) => prDetail.replyToThread(owner, repo, number, commentId, body));
   ipcMain.handle("pr:submit-review", (_e, owner, repo, number, event, body) => prDetail.submitReview(owner, repo, number, event, body));
   ipcMain.handle("pr:resolve-thread", (_e, owner, repo, number, threadId) => prDetail.resolveThread(owner, repo, number, threadId));
+  ipcMain.handle("pr:close", (_e, owner, repo, number) => prDetail.closePR(owner, repo, number));
 
   // --- Agents ---
   ipcMain.handle("agent:start", (_e, data) => agents.startTask(data));

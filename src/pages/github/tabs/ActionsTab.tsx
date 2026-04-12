@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Bot, Check, ClipboardList, ExternalLink, GitBranch,
-  Loader2, MessageSquare, RefreshCw, Send,
+  Loader2, MessageSquare, RefreshCw, Send, XCircle,
 } from "lucide-react";
 import type { PRDetail, RubricCategory, AgentTask } from "../../../lib/pr-types";
 import { ipc } from "../../../lib/ipc";
@@ -60,6 +60,7 @@ export function ActionsTab({
   const [approveComment, setApproveComment] = useState("");
   const [showApproveInput, setShowApproveInput] = useState(false);
   const [showChangesInput, setShowChangesInput] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const prUrl = `https://github.com/${owner}/${repoName}/pull/${number}`;
 
@@ -285,6 +286,46 @@ export function ActionsTab({
           description={prUrl}
           onClick={() => window.open(prUrl, "_blank")}
         />
+      </div>
+
+      {/* Danger zone */}
+      <div className="pt-2 border-t border-wo-border space-y-4">
+        {!showCloseConfirm ? (
+          <ActionButton
+            icon={XCircle}
+            label="Close PR"
+            description="Close this pull request without merging."
+            color="border-[rgba(220,38,38,0.2)]"
+            loading={activeAction === "close"}
+            onClick={() => setShowCloseConfirm(true)}
+          />
+        ) : (
+          <div className="p-4 rounded-lg border border-wo-danger/30 bg-wo-bg-elevated space-y-3">
+            <p className="text-sm font-medium text-wo-danger">Close this pull request?</p>
+            <p className="text-xs text-wo-text-secondary">
+              This will close <span className="font-mono font-semibold">{owner}/{repoName}#{number}</span> without merging. You can reopen it later from GitHub.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setActiveAction("close");
+                  await ipc.closePR(owner, repoName, number);
+                  setActiveAction(null);
+                  setShowCloseConfirm(false);
+                }}
+                disabled={activeAction === "close"}
+                className="flex items-center gap-1.5 px-4 h-8 rounded-lg bg-wo-danger text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {activeAction === "close" ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                Close PR
+              </button>
+              <button type="button" onClick={() => setShowCloseConfirm(false)} className="px-3 h-8 rounded-lg border border-wo-border text-xs font-medium text-wo-text-secondary hover:bg-wo-bg-subtle transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

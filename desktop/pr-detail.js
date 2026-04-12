@@ -180,6 +180,15 @@ async function resolveThread(owner, repo, number, threadId) {
   }
 }
 
+async function closePR(owner, repo, number) {
+  const raw = await gh([
+    "api", `repos/${owner}/${repo}/pulls/${number}`,
+    "-X", "PATCH",
+    "-f", "state=closed",
+  ]);
+  return { ok: !!raw };
+}
+
 // Lightweight: fetch just the head SHA for a PR (fast, minimal data)
 async function fetchPRHeadSha(owner, repo, number) {
   const raw = await gh([
@@ -195,4 +204,4 @@ async function fetchPRHeadSha(owner, repo, number) {
   } catch { return null; }
 }
 
-module.exports = { fetchPRDetail, fetchPRHeadSha, postComment, replyToThread, submitReview, resolveThread };
+module.exports = { fetchPRDetail, fetchPRHeadSha, postComment, replyToThread, submitReview, resolveThread, closePR };

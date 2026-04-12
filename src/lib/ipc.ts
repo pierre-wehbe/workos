@@ -69,6 +69,7 @@ export const ipc = {
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => api.replyToThread(owner, repo, number, commentId, body),
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => api.submitReview(owner, repo, number, event, body),
   resolveThread: (owner: string, repo: string, number: number, threadId: string) => api.resolveThread(owner, repo, number, threadId),
+  closePR: (owner: string, repo: string, number: number) => api.closePR(owner, repo, number),
   // Agents
   startAgent: (data: Parameters<typeof api.startAgent>[0]) => api.startAgent(data),
   cancelAgent: (id: string) => api.cancelAgent(id),

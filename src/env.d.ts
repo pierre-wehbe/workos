@@ -111,6 +111,7 @@ interface ElectronAPI {
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => Promise<{ ok: boolean }>;
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => Promise<{ ok: boolean }>;
   resolveThread: (owner: string, repo: string, number: number, threadId: string) => Promise<{ ok: boolean }>;
+  closePR: (owner: string, repo: string, number: number) => Promise<{ ok: boolean }>;
 
   // Agents
   startAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string; reasoningEffort?: string; changedFiles?: number; changedLines?: number }) => Promise<import("./lib/pr-types").AgentTask>;
