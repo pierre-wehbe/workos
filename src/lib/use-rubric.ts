@@ -10,6 +10,7 @@ export function useRubric() {
     autoApproveMaxLines: 300,
     autoSummarizeMaxFiles: 5,
     autoSummarizeMaxLines: 300,
+    reasoningEffort: "auto",
   });
   const [loading, setLoading] = useState(true);
 

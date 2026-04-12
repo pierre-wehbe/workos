@@ -77,12 +77,15 @@ export interface RubricCategory {
   sortOrder: number;
 }
 
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh" | "auto";
+
 export interface RubricThresholds {
   autoApproveScore: number;
   autoApproveMaxFiles: number;
   autoApproveMaxLines: number;
   autoSummarizeMaxFiles: number;
   autoSummarizeMaxLines: number;
+  reasoningEffort: ReasoningEffort;
 }
 
 export interface RubricResult {

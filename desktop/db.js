@@ -136,6 +136,7 @@ function init(app) {
       autoApproveMaxLines: 300,
       autoSummarizeMaxFiles: 5,
       autoSummarizeMaxLines: 300,
+      reasoningEffort: "auto",
     }));
   }
 

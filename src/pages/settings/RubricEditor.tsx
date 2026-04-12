@@ -12,6 +12,7 @@ export function RubricEditor() {
     autoApproveMaxLines: 300,
     autoSummarizeMaxFiles: 5,
     autoSummarizeMaxLines: 300,
+    reasoningEffort: "auto",
   });
   const [saving, setSaving] = useState(false);
 
@@ -175,6 +176,35 @@ export function RubricEditor() {
             onChange={(v) => setLocalThresh((p) => ({ ...p, autoSummarizeMaxLines: v }))}
           />
         </div>
+      </div>
+
+      {/* Reasoning Effort */}
+      <div>
+        <h3 className="text-sm font-semibold mb-1.5">Reasoning Effort</h3>
+        <p className="text-xs text-wo-text-tertiary mb-3">
+          Controls how deeply the AI CLI reasons about the PR. "Auto" scales with PR size.
+        </p>
+        <div className="flex gap-1.5">
+          {(["auto", "low", "medium", "high", "xhigh"] as const).map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setLocalThresh((p) => ({ ...p, reasoningEffort: level }))}
+              className={`px-3 h-8 rounded-lg text-xs font-medium transition-colors ${
+                localThresh.reasoningEffort === level
+                  ? "bg-wo-accent text-white"
+                  : "bg-wo-bg-subtle text-wo-text-secondary hover:bg-wo-bg-subtle/80"
+              }`}
+            >
+              {level === "auto" ? "Auto" : level === "xhigh" ? "XHigh" : level.charAt(0).toUpperCase() + level.slice(1)}
+            </button>
+          ))}
+        </div>
+        {localThresh.reasoningEffort === "auto" && (
+          <p className="text-[10px] text-wo-text-tertiary mt-2">
+            Auto: Low (≤3 files, ≤100 lines) → Medium (≤8 files) → High (≤20 files) → XHigh (large PRs)
+          </p>
+        )}
       </div>
     </div>
   );

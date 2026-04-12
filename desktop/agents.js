@@ -37,10 +37,26 @@ function cleanAgentOutput(raw) {
   return stripped.trim();
 }
 
+// Resolve "auto" reasoning effort based on PR size
+function resolveReasoningEffort(effort, changedFiles, changedLines) {
+  if (effort !== "auto") return effort;
+  if (changedFiles <= 3 && changedLines <= 100) return "low";
+  if (changedFiles <= 8 && changedLines <= 300) return "medium";
+  if (changedFiles <= 20 && changedLines <= 800) return "high";
+  return "xhigh";
+}
+
 // Returns { args, stdin } — stdin is non-null when the prompt should be piped
-function cliCommand(cli, prompt) {
+function cliCommand(cli, prompt, reasoningEffort) {
   if (cli === "claude") return { args: ["-p", prompt, "--output-format", "text"], stdin: null };
-  if (cli === "codex") return { args: ["exec", "-"], stdin: prompt };
+  if (cli === "codex") {
+    const args = ["exec"];
+    if (reasoningEffort && reasoningEffort !== "auto") {
+      args.push("-c", `model_reasoning_effort="${reasoningEffort}"`);
+    }
+    args.push("-");
+    return { args, stdin: prompt };
+  }
   if (cli === "gemini") return { args: ["-p", prompt], stdin: null };
   return { args: [prompt], stdin: null };
 }
@@ -66,13 +82,14 @@ function setWindow(window) {
   mainWindow = window;
 }
 
-function startTask({ prId, taskType, cli, prompt, workingDir }) {
+function startTask({ prId, taskType, cli, prompt, workingDir, reasoningEffort, changedFiles, changedLines }) {
   const id = crypto.randomUUID();
   const logFile = path.join(logsDir, `${id}.log`);
   const env = loadShellEnvironment();
   const cwd = workingDir || undefined;
 
-  const { args, stdin } = cliCommand(cli, prompt);
+  const effort = resolveReasoningEffort(reasoningEffort || "auto", changedFiles || 0, changedLines || 0);
+  const { args, stdin } = cliCommand(cli, prompt, effort);
 
   // Persist to DB
   db.createAgentTask({ id, prId, taskType, cli });
