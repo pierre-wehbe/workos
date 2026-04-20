@@ -107,6 +107,7 @@ interface ElectronAPI {
   // PR Detail
   fetchPRDetail: (owner: string, repo: string, number: number) => Promise<import("./lib/pr-types").PRDetail | null>;
   fetchPRHeadSha: (owner: string, repo: string, number: number) => Promise<string | null>;
+  fetchFilePatch: (owner: string, repo: string, number: number, filePath: string) => Promise<string | null>;
   postPRComment: (owner: string, repo: string, number: number, body: string) => Promise<{ ok: boolean }>;
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => Promise<{ ok: boolean }>;
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => Promise<{ ok: boolean }>;
@@ -121,6 +122,7 @@ interface ElectronAPI {
   clearAgent: (id: string) => Promise<void>;
   clearAllCompletedAgents: () => Promise<void>;
   getAgentRunningCount: () => Promise<number>;
+  runAgentPrompt: (cli: string, prompt: string) => Promise<{ ok: boolean; output: string }>;
   createWorktree: (repoPath: string, branch: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
   removeWorktree: (repoPath: string, worktreePath: string) => Promise<{ ok: boolean; error?: string }>;
   onAgentUpdate: (cb: (task: import("./lib/pr-types").AgentTask) => void) => () => void;
@@ -137,6 +139,12 @@ interface ElectronAPI {
   listPrCaches: () => Promise<import("./lib/pr-types").PRCacheEntry[]>;
   upsertPrCache: (prId: string, fields: Partial<import("./lib/pr-types").PRCacheEntry>) => Promise<void>;
   cleanupPrCache: () => Promise<void>;
+
+  // PR Discussions
+  getDiscussions: (prId: string) => Promise<import("./lib/pr-types").Discussion[]>;
+  createDiscussion: (data: { prId: string; selectedText: string; context?: string }) => Promise<import("./lib/pr-types").Discussion>;
+  addDiscussionMessage: (data: { discussionId: string; role: string; content: string; cli?: string }) => Promise<import("./lib/pr-types").DiscussionMessage>;
+  deleteDiscussion: (id: string) => Promise<void>;
 }
 
 declare global {

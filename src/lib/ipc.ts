@@ -65,6 +65,7 @@ export const ipc = {
   // PR Detail
   fetchPRDetail: (owner: string, repo: string, number: number) => api.fetchPRDetail(owner, repo, number),
   fetchPRHeadSha: (owner: string, repo: string, number: number) => api.fetchPRHeadSha(owner, repo, number),
+  fetchFilePatch: (owner: string, repo: string, number: number, filePath: string) => api.fetchFilePatch(owner, repo, number, filePath),
   postPRComment: (owner: string, repo: string, number: number, body: string) => api.postPRComment(owner, repo, number, body),
   replyToThread: (owner: string, repo: string, number: number, commentId: string, body: string) => api.replyToThread(owner, repo, number, commentId, body),
   submitReview: (owner: string, repo: string, number: number, event: string, body?: string) => api.submitReview(owner, repo, number, event, body),
@@ -78,6 +79,7 @@ export const ipc = {
   clearAgent: (id: string) => api.clearAgent(id),
   clearAllCompletedAgents: () => api.clearAllCompletedAgents(),
   getAgentRunningCount: () => api.getAgentRunningCount(),
+  runAgentPrompt: (cli: string, prompt: string) => api.runAgentPrompt(cli, prompt),
   createWorktree: (repoPath: string, branch: string) => api.createWorktree(repoPath, branch),
   removeWorktree: (repoPath: string, worktreePath: string) => api.removeWorktree(repoPath, worktreePath),
   onAgentUpdate: (cb: (task: import("./pr-types").AgentTask) => void) => api.onAgentUpdate(cb),
@@ -92,4 +94,9 @@ export const ipc = {
   listPrCaches: () => api.listPrCaches(),
   upsertPrCache: (prId: string, fields: Partial<import("./pr-types").PRCacheEntry>) => api.upsertPrCache(prId, fields),
   cleanupPrCache: () => api.cleanupPrCache(),
+  // PR Discussions
+  getDiscussions: (prId: string) => api.getDiscussions(prId),
+  createDiscussion: (data: Parameters<typeof api.createDiscussion>[0]) => api.createDiscussion(data),
+  addDiscussionMessage: (data: Parameters<typeof api.addDiscussionMessage>[0]) => api.addDiscussionMessage(data),
+  deleteDiscussion: (id: string) => api.deleteDiscussion(id),
 } as const;

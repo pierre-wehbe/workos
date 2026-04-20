@@ -1,13 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, ChevronRight, Clock, FileText, Loader2, RefreshCw, Zap } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { PRDetail, PRCacheEntry, RubricCategory, RubricThresholds, AgentTask } from "../../../lib/pr-types";
+import type { PRDetail, PRCacheEntry, RubricCategory, RubricThresholds, AgentTask, Discussion } from "../../../lib/pr-types";
+import { DiffViewer } from "../../../components/DiffViewer";
+import { AskAIButton } from "../../../components/AskAIButton";
+import { DiscussionPanel } from "../../../components/DiscussionPanel";
+import { ipc } from "../../../lib/ipc";
 
 interface BriefingTabProps {
   prDetail: PRDetail | null;
   cache: PRCacheEntry | null;
   prId: string;
+  owner: string;
+  repoName: string;
+  number: number;
   selectedCli: string;
   rubricCategories: RubricCategory[];
   rubricThresholds: RubricThresholds;
@@ -31,12 +38,43 @@ function scoreDelta(current: number, previous: number | undefined) {
 }
 
 export function BriefingTab({
-  prDetail, cache, prId, selectedCli,
+  prDetail, cache, prId, owner, repoName, number, selectedCli,
   rubricCategories, rubricThresholds, agentTasks, onStartAgent, onUpdateCache,
 }: BriefingTabProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTriggered, setAutoTriggered] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const selectableRef = useRef<HTMLDivElement>(null);
+
+  // Load discussions for this PR
+  useEffect(() => {
+    ipc.getDiscussions(prId).then(setDiscussions);
+  }, [prId]);
+
+  const refreshDiscussions = () => ipc.getDiscussions(prId).then(setDiscussions);
+
+  const handleAskAI = async (selectedText: string, question: string) => {
+    const disc = await ipc.createDiscussion({ prId, selectedText });
+    await ipc.addDiscussionMessage({ discussionId: disc.id, role: "user", content: question });
+    await refreshDiscussions();
+
+    // Build rich context: PR info + latest summary + the selection + the question
+    const latestSummary = (cache?.analyses ?? []).at(-1)?.summary;
+    const contextParts = [
+      `PR: ${prId}${prDetail?.title ? ` — "${prDetail.title}"` : ""}`,
+      prDetail?.author ? `Author: ${prDetail.author}` : null,
+      latestSummary ? `PR Summary: ${latestSummary.slice(0, 500)}` : null,
+      `\nSelected text from the PR diff:\n"${selectedText}"`,
+      `\nUser's question: ${question}`,
+    ].filter(Boolean).join("\n");
+
+    const prompt = `You are helping a developer review a pull request. Answer concisely and specifically.\n\n${contextParts}`;
+    const result = await ipc.runAgentPrompt(selectedCli, prompt);
+    const answer = result.ok ? result.output : "Sorry, I couldn't get a response. Please try again.";
+    await ipc.addDiscussionMessage({ discussionId: disc.id, role: "assistant", content: answer, cli: selectedCli });
+    await refreshDiscussions();
+  };
 
   const analyses = cache?.analyses ?? [];
   const latest = analyses[analyses.length - 1] ?? null;
@@ -191,23 +229,12 @@ export function BriefingTab({
         </div>
       )}
 
-      {/* Key changes (file list) */}
-      {prDetail && prDetail.files.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold mb-2">Files</h3>
-          <div className="space-y-1">
-            {prDetail.files.map((f) => (
-              <div key={f.path} className="flex items-center justify-between px-3 py-1.5 rounded-md bg-wo-bg-subtle text-xs">
-                <span className="font-mono text-wo-text-secondary truncate">{f.path}</span>
-                <span className="flex items-center gap-2 shrink-0 ml-3">
-                  {f.additions > 0 && <span className="text-wo-success">+{f.additions}</span>}
-                  {f.deletions > 0 && <span className="text-wo-danger">-{f.deletions}</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Key changes (file list) — selectable area for Ask AI */}
+      <div ref={selectableRef}>
+        {prDetail && prDetail.files.length > 0 && (
+          <FileList files={prDetail.files} owner={owner} repoName={repoName} number={number} />
+        )}
+      </div>
 
       {/* Review history (older analyses) */}
       {analyses.length > 1 && (
@@ -258,6 +285,78 @@ export function BriefingTab({
           </div>
         </div>
       )}
+
+      {/* Discussions (Q&A threads) */}
+      <DiscussionPanel
+        prId={prId}
+        selectedCli={selectedCli}
+        discussions={discussions}
+        onRefresh={refreshDiscussions}
+      />
+
+      {/* Floating "Ask AI" button on text selection */}
+      <AskAIButton containerRef={selectableRef} onAsk={handleAskAI} />
+    </div>
+  );
+}
+
+/* --- Expandable file list with lazy-loaded diffs --- */
+
+function FileList({ files, owner, repoName, number }: {
+  files: PRDetail["files"]; owner: string; repoName: string; number: number;
+}) {
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [patches, setPatches] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleToggle = async (path: string) => {
+    if (expandedFile === path) {
+      setExpandedFile(null);
+      return;
+    }
+    setExpandedFile(path);
+    if (!patches[path]) {
+      setLoading(path);
+      const patch = await ipc.fetchFilePatch(owner, repoName, number, path);
+      if (patch) setPatches((prev) => ({ ...prev, [path]: patch }));
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-2">Files</h3>
+      <div className="space-y-1">
+        {files.map((f) => (
+          <div key={f.path} className="rounded-lg border border-wo-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleToggle(f.path)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-wo-bg-subtle/50 transition-colors text-left"
+            >
+              {expandedFile === f.path ? <ChevronDown size={11} className="shrink-0 text-wo-text-tertiary" /> : <ChevronRight size={11} className="shrink-0 text-wo-text-tertiary" />}
+              <span className="font-mono text-wo-text-secondary truncate flex-1">{f.path}</span>
+              <span className="flex items-center gap-2 shrink-0 ml-3">
+                {f.additions > 0 && <span className="text-wo-success">+{f.additions}</span>}
+                {f.deletions > 0 && <span className="text-wo-danger">-{f.deletions}</span>}
+              </span>
+            </button>
+            {expandedFile === f.path && (
+              <div className="border-t border-wo-border">
+                {loading === f.path ? (
+                  <div className="flex items-center gap-2 p-3 text-xs text-wo-text-tertiary">
+                    <Loader2 size={11} className="animate-spin" /> Loading diff...
+                  </div>
+                ) : patches[f.path] ? (
+                  <DiffViewer patch={patches[f.path]} />
+                ) : (
+                  <p className="p-3 text-xs text-wo-text-tertiary">No diff available for this file.</p>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

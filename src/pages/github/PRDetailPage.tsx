@@ -135,6 +135,9 @@ export function PRDetailPage({
             prDetail={prDetail}
             cache={cache}
             prId={prId}
+            owner={pr.owner}
+            repoName={pr.repoName}
+            number={pr.number}
             selectedCli={selectedCli}
             rubricCategories={rubricCategories}
             rubricThresholds={rubricThresholds}

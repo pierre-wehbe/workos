@@ -243,6 +243,7 @@ app.whenReady().then(() => {
   // --- PR Detail ---
   ipcMain.handle("pr:fetch-detail", (_e, owner, repo, number) => prDetail.fetchPRDetail(owner, repo, number));
   ipcMain.handle("pr:fetch-head-sha", (_e, owner, repo, number) => prDetail.fetchPRHeadSha(owner, repo, number));
+  ipcMain.handle("pr:fetch-file-patch", (_e, owner, repo, number, filePath) => prDetail.fetchFilePatch(owner, repo, number, filePath));
   ipcMain.handle("pr:post-comment", (_e, owner, repo, number, body) => prDetail.postComment(owner, repo, number, body));
   ipcMain.handle("pr:reply-to-thread", (_e, owner, repo, number, commentId, body) => prDetail.replyToThread(owner, repo, number, commentId, body));
   ipcMain.handle("pr:submit-review", (_e, owner, repo, number, event, body) => prDetail.submitReview(owner, repo, number, event, body));
@@ -256,6 +257,7 @@ app.whenReady().then(() => {
   ipcMain.handle("agent:logs", (_e, id) => agents.getTaskLogs(id));
   ipcMain.handle("agent:clear", (_e, id) => agents.clearTask(id));
   ipcMain.handle("agent:clear-all-completed", () => agents.clearAllCompleted());
+  ipcMain.handle("agent:run-prompt", (_e, cli, prompt) => agents.runPrompt(cli, prompt));
   ipcMain.handle("agent:running-count", () => agents.getRunningCount());
   ipcMain.handle("agent:create-worktree", (_e, repoPath, branch) => agents.createWorktree(repoPath, branch));
   ipcMain.handle("agent:remove-worktree", (_e, repoPath, worktreePath) => agents.removeWorktree(repoPath, worktreePath));
@@ -271,6 +273,12 @@ app.whenReady().then(() => {
   ipcMain.handle("pr-cache:list", () => db.listPrCaches());
   ipcMain.handle("pr-cache:upsert", (_e, prId, fields) => db.upsertPrCache(prId, fields));
   ipcMain.handle("pr-cache:cleanup", () => db.cleanupPrCache());
+
+  // --- PR Discussions ---
+  ipcMain.handle("discussion:list", (_e, prId) => db.getDiscussions(prId));
+  ipcMain.handle("discussion:create", (_e, data) => db.createDiscussion(data));
+  ipcMain.handle("discussion:add-message", (_e, data) => db.addDiscussionMessage(data));
+  ipcMain.handle("discussion:delete", (_e, id) => db.deleteDiscussion(id));
 
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));

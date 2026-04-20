@@ -115,3 +115,21 @@ export interface AgentTask {
   startedAt: string;
   completedAt: string | null;
 }
+
+export interface DiscussionMessage {
+  id: string;
+  discussionId: string;
+  role: "user" | "assistant";
+  content: string;
+  cli: string | null;
+  createdAt: string;
+}
+
+export interface Discussion {
+  id: string;
+  prId: string;
+  selectedText: string;
+  context: string | null;
+  createdAt: string;
+  messages: DiscussionMessage[];
+}

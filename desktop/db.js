@@ -84,6 +84,21 @@ function init(app) {
       description TEXT NOT NULL DEFAULT '',
       sort_order INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS pr_discussions (
+      id TEXT PRIMARY KEY,
+      pr_id TEXT NOT NULL,
+      selected_text TEXT NOT NULL,
+      context TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS pr_discussion_messages (
+      id TEXT PRIMARY KEY,
+      discussion_id TEXT NOT NULL REFERENCES pr_discussions(id) ON DELETE CASCADE,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      cli TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Migrations
@@ -525,6 +540,42 @@ function importConfig(json) {
   importTx(data.workspaces);
 }
 
+// PR Discussions
+function getDiscussions(prId) {
+  const rows = db.prepare("SELECT * FROM pr_discussions WHERE pr_id = ? ORDER BY created_at DESC").all(prId);
+  return rows.map((d) => ({
+    id: d.id,
+    prId: d.pr_id,
+    selectedText: d.selected_text,
+    context: d.context,
+    createdAt: d.created_at,
+    messages: db.prepare("SELECT * FROM pr_discussion_messages WHERE discussion_id = ? ORDER BY created_at").all(d.id).map((m) => ({
+      id: m.id,
+      discussionId: m.discussion_id,
+      role: m.role,
+      content: m.content,
+      cli: m.cli,
+      createdAt: m.created_at,
+    })),
+  }));
+}
+
+function createDiscussion({ prId, selectedText, context }) {
+  const id = uuid();
+  db.prepare("INSERT INTO pr_discussions (id, pr_id, selected_text, context) VALUES (?, ?, ?, ?)").run(id, prId, selectedText, context || null);
+  return { id, prId, selectedText, context, createdAt: new Date().toISOString(), messages: [] };
+}
+
+function addDiscussionMessage({ discussionId, role, content, cli }) {
+  const id = uuid();
+  db.prepare("INSERT INTO pr_discussion_messages (id, discussion_id, role, content, cli) VALUES (?, ?, ?, ?, ?)").run(id, discussionId, role, content, cli || null);
+  return { id, discussionId, role, content, cli, createdAt: new Date().toISOString() };
+}
+
+function deleteDiscussion(id) {
+  db.prepare("DELETE FROM pr_discussions WHERE id = ?").run(id);
+}
+
 module.exports = {
   init, getMeta, setMeta, getSetupComplete, setSetupComplete,
   getWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, getActiveWorkspace, setActiveWorkspace,
@@ -534,4 +585,5 @@ module.exports = {
   getPrCache, listPrCaches, upsertPrCache, cleanupPrCache, updatePrState,
   getRubricCategories, saveRubricCategories, getRubricThresholds, saveRubricThresholds,
   getAgentTasks, getAgentTask, createAgentTask, updateAgentTask, clearAgentTask, clearCompletedAgentTasks,
+  getDiscussions, createDiscussion, addDiscussionMessage, deleteDiscussion,
 };

@@ -109,6 +109,18 @@ async function fetchPRDetail(owner, repo, number) {
   }
 }
 
+// Fetch patch content for a single file in a PR (lazy, on-demand)
+async function fetchFilePatch(owner, repo, number, filePath) {
+  // REST endpoint returns all files with patches — we filter to the one requested
+  // Use per_page=100 and pagination isn't needed since we filter client-side
+  const raw = await gh([
+    "api", `repos/${owner}/${repo}/pulls/${number}/files`,
+    "--paginate",
+    "-q", `.[] | select(.filename == "${filePath}") | .patch`,
+  ]);
+  return raw || null;
+}
+
 async function postComment(owner, repo, number, body) {
   const raw = await gh([
     "api",
@@ -204,4 +216,4 @@ async function fetchPRHeadSha(owner, repo, number) {
   } catch { return null; }
 }
 
-module.exports = { fetchPRDetail, fetchPRHeadSha, postComment, replyToThread, submitReview, resolveThread, closePR };
+module.exports = { fetchPRDetail, fetchPRHeadSha, fetchFilePatch, postComment, replyToThread, submitReview, resolveThread, closePR };

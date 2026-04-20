@@ -1,4 +1,6 @@
-const { spawn, execFileSync } = require("node:child_process");
+const { spawn, execFile, execFileSync } = require("node:child_process");
+const { promisify } = require("node:util");
+const execFileAsync = promisify(execFile);
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -309,8 +311,34 @@ function toSerializable(entry) {
   return rest;
 }
 
+// Run a one-shot prompt against the active CLI and return the cleaned result.
+// Used for inline Q&A (discussions) where we need a synchronous response.
+async function runPrompt(cli, prompt) {
+  const { args, stdin } = cliCommand(cli, prompt, "low");
+  const env = loadShellEnvironment();
+  try {
+    if (stdin) {
+      // For codex: pipe prompt via stdin
+      const child = require("node:child_process").spawn(cli, args, { env, timeout: 120000 });
+      let output = "";
+      child.stdin.write(stdin);
+      child.stdin.end();
+      return new Promise((resolve) => {
+        child.stdout.on("data", (d) => { output += d.toString(); });
+        child.stderr.on("data", (d) => { output += d.toString(); });
+        child.on("close", () => resolve({ ok: true, output: cleanAgentOutput(output) }));
+        child.on("error", (err) => resolve({ ok: false, output: err.message }));
+      });
+    }
+    const { stdout, stderr } = await execFileAsync(cli, args, { encoding: "utf8", env, timeout: 120000, maxBuffer: 5 * 1024 * 1024 });
+    return { ok: true, output: cleanAgentOutput((stdout || "") + (stderr || "")) };
+  } catch (err) {
+    return { ok: false, output: err.message ?? "CLI failed" };
+  }
+}
+
 module.exports = {
   init, setWindow, startTask, cancelTask, listTasks, getTaskLogs,
   clearTask, clearAllCompleted, createWorktree, removeWorktree,
-  killAll, getRunningCount,
+  killAll, getRunningCount, runPrompt,
 };

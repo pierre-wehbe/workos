@@ -89,6 +89,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // PR Detail
   fetchPRDetail: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-detail", owner, repo, number),
   fetchPRHeadSha: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-head-sha", owner, repo, number),
+  fetchFilePatch: (owner, repo, number, filePath) => ipcRenderer.invoke("pr:fetch-file-patch", owner, repo, number, filePath),
   postPRComment: (owner, repo, number, body) => ipcRenderer.invoke("pr:post-comment", owner, repo, number, body),
   replyToThread: (owner, repo, number, commentId, body) => ipcRenderer.invoke("pr:reply-to-thread", owner, repo, number, commentId, body),
   submitReview: (owner, repo, number, event, body) => ipcRenderer.invoke("pr:submit-review", owner, repo, number, event, body),
@@ -102,6 +103,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAgentLogs: (id) => ipcRenderer.invoke("agent:logs", id),
   clearAgent: (id) => ipcRenderer.invoke("agent:clear", id),
   clearAllCompletedAgents: () => ipcRenderer.invoke("agent:clear-all-completed"),
+  runAgentPrompt: (cli, prompt) => ipcRenderer.invoke("agent:run-prompt", cli, prompt),
   getAgentRunningCount: () => ipcRenderer.invoke("agent:running-count"),
   createWorktree: (repoPath, branch) => ipcRenderer.invoke("agent:create-worktree", repoPath, branch),
   removeWorktree: (repoPath, worktreePath) => ipcRenderer.invoke("agent:remove-worktree", repoPath, worktreePath),
@@ -127,6 +129,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listPrCaches: () => ipcRenderer.invoke("pr-cache:list"),
   upsertPrCache: (prId, fields) => ipcRenderer.invoke("pr-cache:upsert", prId, fields),
   cleanupPrCache: () => ipcRenderer.invoke("pr-cache:cleanup"),
+
+  // PR Discussions
+  getDiscussions: (prId) => ipcRenderer.invoke("discussion:list", prId),
+  createDiscussion: (data) => ipcRenderer.invoke("discussion:create", data),
+  addDiscussionMessage: (data) => ipcRenderer.invoke("discussion:add-message", data),
+  deleteDiscussion: (id) => ipcRenderer.invoke("discussion:delete", id),
 
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),
