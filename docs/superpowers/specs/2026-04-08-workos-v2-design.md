@@ -476,15 +476,15 @@ Tabbed layout (same sidebar pattern as tools-gui settings):
   "workspaces": [
     {
       "id": "uuid",
-      "name": "Signos",
-      "org": "signos",
-      "pathRelative": "~/Development/signos",
+      "name": "Personal",
+      "org": "personal",
+      "pathRelative": "~/Development/personal",
       "projects": [
         {
           "id": "uuid",
           "name": "Backend API",
-          "repoUrl": "git@github.com:signos/api.git",
-          "pathRelative": "~/Development/signos/api",
+          "repoUrl": "git@github.com:personal/api.git",
+          "pathRelative": "~/Development/personal/api",
           "devCommand": "poetry run uvicorn main:app --reload",
           "ide": "cursor",
           "bootstrapCommand": "poetry install"

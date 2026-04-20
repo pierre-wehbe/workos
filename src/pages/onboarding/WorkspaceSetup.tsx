@@ -45,11 +45,11 @@ export function WorkspaceSetup({ onComplete }: WorkspaceSetupProps) {
       <div className="space-y-4 max-w-md">
         <label className="block">
           <span className="text-sm font-medium text-wo-text mb-1.5 block">Organization</span>
-          <input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="e.g. signos" className={inputClass} />
+          <input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="e.g. personal" className={inputClass} />
         </label>
         <label className="block">
           <span className="text-sm font-medium text-wo-text mb-1.5 block">Workspace name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Signos Cloud" className={inputClass} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Personal" className={inputClass} />
         </label>
         <div>
           <span className="text-sm font-medium text-wo-text mb-1.5 block">Directory</span>

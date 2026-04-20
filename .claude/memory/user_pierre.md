@@ -1,10 +1,10 @@
 ---
 name: Pierre's profile and preferences
-description: Senior engineer who values production-grade code, great UX, and references Signos tools-gui as design inspiration
+description: Senior engineer who values production-grade code, great UX
 type: user
 ---
 
-Pierre is a principal consultant who builds Electron desktop tools. He references `/Users/pierro/Documents/Development/signos/signos_cloud/tools-gui` as his gold standard for UI/UX (Tailwind 4, Lucide icons, dark/light theme with CSS vars, xterm terminal, clean sidebar layout).
+Pierre is a principal consultant who builds Electron desktop tools. Gold standard for UI/UX (Tailwind 4, Lucide icons, dark/light theme with CSS vars, xterm terminal, clean sidebar layout).
 
 Key preferences:
 - YAGNI, KISS, DRY — no overbuilding

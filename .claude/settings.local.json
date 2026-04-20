@@ -102,7 +102,15 @@
       "Bash(codex auth:*)",
       "Bash(env)",
       "Bash(claude auth:*)",
-      "Bash(gemini auth:*)"
+      "Bash(gemini auth:*)",
+      "Bash(/Users/pierro/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh --project-dir /Users/pierro/Documents/Development/WorkOS)",
+      "Bash(codex --help)",
+      "Bash(codex exec:*)",
+      "Bash(npm test:*)",
+      "Bash(bun test:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(lsof -ti:5555)"
     ]
   }
 }
