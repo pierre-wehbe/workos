@@ -12,6 +12,7 @@ import {
 import type { Project } from "../lib/types";
 import type { WorktreeInfo } from "../lib/pr-types";
 import { ipc } from "../lib/ipc";
+import { Tooltip } from "./Tooltip";
 
 interface DashboardWorktreesProps {
   projects: Project[];
@@ -125,39 +126,30 @@ export function DashboardWorktrees({ projects }: DashboardWorktreesProps) {
                 <SyncBadge status={syncStatus} />
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => refreshSync(wt)}
-                  className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-                  title="Check sync status"
-                >
-                  <RefreshCw size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => ipc.openInIDE(wt.path, "cursor")}
-                  className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-                  title="Open in IDE"
-                >
-                  <ExternalLink size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => ipc.openInFinder(wt.path)}
-                  className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-                  title="Open in Finder"
-                >
-                  <FolderOpen size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmRemove(wt)}
-                  disabled={isRemoving}
-                  className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-danger hover:bg-wo-bg-subtle transition-colors"
-                  title="Remove worktree"
-                >
-                  <Trash2 size={12} />
-                </button>
+                <Tooltip text="Check sync status">
+                  <button type="button" onClick={() => refreshSync(wt)}
+                    className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+                    <RefreshCw size={12} />
+                  </button>
+                </Tooltip>
+                <Tooltip text="Open in IDE">
+                  <button type="button" onClick={() => ipc.openInIDE(wt.path, "cursor")}
+                    className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+                    <ExternalLink size={12} />
+                  </button>
+                </Tooltip>
+                <Tooltip text="Open in Finder">
+                  <button type="button" onClick={() => ipc.openInFinder(wt.path)}
+                    className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+                    <FolderOpen size={12} />
+                  </button>
+                </Tooltip>
+                <Tooltip text="Remove worktree">
+                  <button type="button" onClick={() => setConfirmRemove(wt)} disabled={isRemoving}
+                    className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-danger hover:bg-wo-bg-subtle transition-colors">
+                    <Trash2 size={12} />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           );

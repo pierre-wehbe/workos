@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { WorktreeInfo } from "../lib/pr-types";
 import { ipc } from "../lib/ipc";
+import { Tooltip } from "./Tooltip";
 
 interface WorktreeListProps {
   repoPath: string;
@@ -326,39 +327,30 @@ function WorktreeRow({ worktree, syncStatus, compact, onRefreshSync, onRemove, i
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={onRefreshSync}
-          className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-          title="Check sync status"
-        >
-          <RefreshCw size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={() => ipc.openInIDE(worktree.path, "cursor")}
-          className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-          title="Open in IDE"
-        >
-          <ExternalLink size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={() => ipc.openInFinder(worktree.path)}
-          className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors"
-          title="Open in Finder"
-        >
-          <FolderOpen size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={isRemoving}
-          className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-danger hover:bg-wo-bg-subtle transition-colors"
-          title="Remove worktree"
-        >
-          <Trash2 size={12} />
-        </button>
+        <Tooltip text="Check sync status">
+          <button type="button" onClick={onRefreshSync}
+            className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+            <RefreshCw size={12} />
+          </button>
+        </Tooltip>
+        <Tooltip text="Open in IDE">
+          <button type="button" onClick={() => ipc.openInIDE(worktree.path, "cursor")}
+            className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+            <ExternalLink size={12} />
+          </button>
+        </Tooltip>
+        <Tooltip text="Open in Finder">
+          <button type="button" onClick={() => ipc.openInFinder(worktree.path)}
+            className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-text hover:bg-wo-bg-subtle transition-colors">
+            <FolderOpen size={12} />
+          </button>
+        </Tooltip>
+        <Tooltip text="Remove worktree">
+          <button type="button" onClick={onRemove} disabled={isRemoving}
+            className="p-1.5 rounded-md text-wo-text-tertiary hover:text-wo-danger hover:bg-wo-bg-subtle transition-colors">
+            <Trash2 size={12} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
