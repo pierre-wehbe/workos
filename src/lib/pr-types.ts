@@ -10,6 +10,7 @@ export interface PRDetail {
   createdAt: string;
   updatedAt: string;
   headSha: string;
+  headBranch: string;
   additions: number;
   deletions: number;
   changedFiles: number;
@@ -132,4 +133,13 @@ export interface Discussion {
   context: string | null;
   createdAt: string;
   messages: DiscussionMessage[];
+}
+
+export interface WorktreeInfo {
+  path: string;
+  branch: string | null;
+  headSha: string | null;
+  detached: boolean;
+  isMain: boolean;
+  syncStatus: string | null;
 }

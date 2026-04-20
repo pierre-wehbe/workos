@@ -5,6 +5,7 @@ import { ipc } from "../../lib/ipc";
 import { Terminal } from "../../components/Terminal";
 import { FullscreenTerminal } from "../../components/FullscreenTerminal";
 import { ToolsTab } from "./ToolsTab";
+import { WorktreeList } from "../../components/WorktreeList";
 
 interface ProjectDetailPageProps {
   project: Project;
@@ -25,7 +26,7 @@ export function ProjectDetailPage({
   onStartProcess, onStopProcess, onBack, onDeleted,
 }: ProjectDetailPageProps) {
   const [branch, setBranch] = useState<string | null>(null);
-  const [tab, setTab] = useState<"tools" | "terminal">("tools");
+  const [tab, setTab] = useState<"tools" | "terminal" | "worktrees">("tools");
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -207,6 +208,18 @@ export function ProjectDetailPage({
         >
           Terminal
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("worktrees")}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "worktrees"
+              ? "border-wo-accent text-wo-accent"
+              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
+          }`}
+        >
+          <GitBranch size={14} />
+          Worktrees
+        </button>
       </div>
 
       {/* Terminal */}
@@ -289,6 +302,12 @@ export function ProjectDetailPage({
 
       {tab === "tools" && (
         <ToolsTab project={project} onRunTool={handleRunTool} />
+      )}
+
+      {tab === "worktrees" && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <WorktreeList repoPath={project.localPath} />
+        </div>
       )}
 
       {/* Fullscreen terminal */}

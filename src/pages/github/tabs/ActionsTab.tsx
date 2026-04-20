@@ -3,7 +3,7 @@ import {
   Bot, Check, ClipboardList, ExternalLink, GitBranch,
   Loader2, MessageSquare, RefreshCw, Send, XCircle,
 } from "lucide-react";
-import type { PRDetail, RubricCategory, AgentTask } from "../../../lib/pr-types";
+import type { PRDetail, RubricCategory, AgentTask, WorktreeInfo } from "../../../lib/pr-types";
 import { ipc } from "../../../lib/ipc";
 
 interface ActionsTabProps {
@@ -15,7 +15,10 @@ interface ActionsTabProps {
   isAuthor: boolean;
   selectedCli: string;
   rubricCategories: RubricCategory[];
+  worktree: WorktreeInfo | null;
   onStartAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string }) => Promise<AgentTask>;
+  onCreateWorktree: () => Promise<void>;
+  onRemoveWorktree: () => Promise<void>;
 }
 
 function ActionButton({
@@ -53,7 +56,7 @@ function ActionButton({
 
 export function ActionsTab({
   prDetail, prId, owner, repoName, number, isAuthor, selectedCli,
-  rubricCategories, onStartAgent,
+  rubricCategories, worktree, onStartAgent, onCreateWorktree, onRemoveWorktree,
 }: ActionsTabProps) {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [reviewBody, setReviewBody] = useState("");
@@ -142,9 +145,7 @@ export function ActionsTab({
       });
     });
 
-  const handleWorktree = () => {
-    // Placeholder for worktree functionality
-  };
+  const handleWorktree = () => worktree ? onRemoveWorktree() : onCreateWorktree();
 
   return (
     <div className="p-6 max-w-3xl space-y-4">
@@ -175,8 +176,9 @@ export function ActionsTab({
           />
           <ActionButton
             icon={GitBranch}
-            label="Spin Up Worktree"
-            description="Create a git worktree for this branch (coming soon)."
+            label={worktree ? "Remove Worktree" : "Spin Up Worktree"}
+            description={worktree ? `Active at ${worktree.path}` : "Create an isolated git worktree for this PR's branch."}
+            color={worktree ? "border-[rgba(220,38,38,0.2)]" : undefined}
             onClick={handleWorktree}
           />
         </>

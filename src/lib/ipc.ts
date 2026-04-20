@@ -80,8 +80,6 @@ export const ipc = {
   clearAllCompletedAgents: () => api.clearAllCompletedAgents(),
   getAgentRunningCount: () => api.getAgentRunningCount(),
   runAgentPrompt: (cli: string, prompt: string) => api.runAgentPrompt(cli, prompt),
-  createWorktree: (repoPath: string, branch: string) => api.createWorktree(repoPath, branch),
-  removeWorktree: (repoPath: string, worktreePath: string) => api.removeWorktree(repoPath, worktreePath),
   onAgentUpdate: (cb: (task: import("./pr-types").AgentTask) => void) => api.onAgentUpdate(cb),
   onAgentOutput: (cb: (id: string, chunk: string) => void) => api.onAgentOutput(cb),
   // Rubric
@@ -99,4 +97,10 @@ export const ipc = {
   createDiscussion: (data: Parameters<typeof api.createDiscussion>[0]) => api.createDiscussion(data),
   addDiscussionMessage: (data: Parameters<typeof api.addDiscussionMessage>[0]) => api.addDiscussionMessage(data),
   deleteDiscussion: (id: string) => api.deleteDiscussion(id),
+  // Worktrees
+  listWorktrees: (repoPath: string) => api.listWorktrees(repoPath),
+  checkWorktreeSyncStatus: (repoPath: string, worktreePath: string) => api.checkWorktreeSyncStatus(repoPath, worktreePath),
+  createWorktreeForBranch: (repoPath: string, branch: string, targetPath?: string) => api.createWorktreeForBranch(repoPath, branch, targetPath),
+  removeWorktree: (repoPath: string, worktreePath: string) => api.removeWorktree(repoPath, worktreePath),
+  pruneWorktrees: (repoPath: string) => api.pruneWorktrees(repoPath),
 } as const;

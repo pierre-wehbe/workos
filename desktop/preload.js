@@ -105,8 +105,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearAllCompletedAgents: () => ipcRenderer.invoke("agent:clear-all-completed"),
   runAgentPrompt: (cli, prompt) => ipcRenderer.invoke("agent:run-prompt", cli, prompt),
   getAgentRunningCount: () => ipcRenderer.invoke("agent:running-count"),
-  createWorktree: (repoPath, branch) => ipcRenderer.invoke("agent:create-worktree", repoPath, branch),
-  removeWorktree: (repoPath, worktreePath) => ipcRenderer.invoke("agent:remove-worktree", repoPath, worktreePath),
   onAgentUpdate: (cb) => {
     const handler = (_e, d) => cb(d);
     ipcRenderer.on("agent-task:update", handler);
@@ -135,6 +133,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createDiscussion: (data) => ipcRenderer.invoke("discussion:create", data),
   addDiscussionMessage: (data) => ipcRenderer.invoke("discussion:add-message", data),
   deleteDiscussion: (id) => ipcRenderer.invoke("discussion:delete", id),
+
+  // Worktrees
+  listWorktrees: (repoPath) => ipcRenderer.invoke("worktree:list", repoPath),
+  checkWorktreeSyncStatus: (repoPath, worktreePath) => ipcRenderer.invoke("worktree:sync-status", repoPath, worktreePath),
+  createWorktreeForBranch: (repoPath, branch, targetPath) => ipcRenderer.invoke("worktree:create", repoPath, branch, targetPath),
+  removeWorktree: (repoPath, worktreePath) => ipcRenderer.invoke("worktree:remove", repoPath, worktreePath),
+  pruneWorktrees: (repoPath) => ipcRenderer.invoke("worktree:prune", repoPath),
 
   // Processes
   startProcess: (data) => ipcRenderer.invoke("process:start", data),

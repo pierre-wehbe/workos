@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ArrowLeft, Clock, ExternalLink, GitPullRequest, Loader2,
+  ArrowLeft, Clock, ExternalLink, GitBranch, GitPullRequest, Loader2,
 } from "lucide-react";
-import type { GitHubPR } from "../../lib/types";
-import type { RubricCategory, RubricThresholds, AgentTask } from "../../lib/pr-types";
+import type { GitHubPR, Project } from "../../lib/types";
+import type { RubricCategory, RubricThresholds, AgentTask, WorktreeInfo } from "../../lib/pr-types";
 import { usePRDetail } from "../../lib/use-pr-detail";
 import { ipc } from "../../lib/ipc";
 import { BriefingTab } from "./tabs/BriefingTab";
@@ -18,6 +18,7 @@ interface PRDetailPageProps {
   rubricCategories: RubricCategory[];
   rubricThresholds: RubricThresholds;
   agentTasks: AgentTask[];
+  projects: Project[];
   onStartAgent: (data: { prId: string; taskType: string; cli: string; prompt: string; workingDir?: string }) => Promise<AgentTask>;
   onBack: () => void;
 }
@@ -26,7 +27,7 @@ type Tab = "briefing" | "comments" | "rubric" | "actions";
 
 export function PRDetailPage({
   pr, username, selectedCli, rubricCategories, rubricThresholds,
-  agentTasks, onStartAgent, onBack,
+  agentTasks, projects, onStartAgent, onBack,
 }: PRDetailPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>("briefing");
   const { prDetail, cache, loading, fetchDetail, updateCache } = usePRDetail();
@@ -34,6 +35,41 @@ export function PRDetailPage({
   const prId = `${pr.owner}/${pr.repoName}#${pr.number}`;
   const isAuthor = !!(username && pr.author.toLowerCase() === username.toLowerCase());
   const commentCount = prDetail?.reviewThreads.length ?? 0;
+
+  // Find the local project for this PR's repo (to manage worktrees)
+  const matchedProject = projects.find((p) =>
+    p.repoUrl?.includes(`${pr.owner}/${pr.repoName}`) || p.name === pr.repoName
+  );
+  const repoPath = matchedProject?.localPath ?? null;
+
+  // Worktree state for this PR's branch
+  const [worktree, setWorktree] = useState<WorktreeInfo | null>(null);
+  const [worktreeLoading, setWorktreeLoading] = useState(false);
+
+  const refreshWorktree = useCallback(async () => {
+    if (!repoPath || !prDetail?.headBranch) return;
+    const wts = await ipc.listWorktrees(repoPath);
+    const match = wts.find((w) => w.branch === prDetail.headBranch && !w.isMain);
+    setWorktree(match ?? null);
+  }, [repoPath, prDetail?.headBranch]);
+
+  useEffect(() => { refreshWorktree(); }, [refreshWorktree]);
+
+  const handleCreateWorktree = async () => {
+    if (!repoPath || !prDetail?.headBranch) return;
+    setWorktreeLoading(true);
+    await ipc.createWorktreeForBranch(repoPath, prDetail.headBranch);
+    await refreshWorktree();
+    setWorktreeLoading(false);
+  };
+
+  const handleRemoveWorktree = async () => {
+    if (!repoPath || !worktree) return;
+    setWorktreeLoading(true);
+    await ipc.removeWorktree(repoPath, worktree.path);
+    setWorktree(null);
+    setWorktreeLoading(false);
+  };
 
   const handlePostComment = useCallback(async (body: string) => {
     await ipc.postPRComment(pr.owner, pr.repoName, pr.number, body);
@@ -79,6 +115,22 @@ export function PRDetailPage({
                   {diffStats}
                 </span>
               )}
+              {worktree ? (
+                <span title={`Worktree active at ${worktree.path}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[rgba(109,40,217,0.1)] text-purple-500 text-[10px] font-semibold cursor-default">
+                  <GitBranch size={9} /> Worktree
+                </span>
+              ) : repoPath && prDetail?.headBranch ? (
+                <button
+                  type="button"
+                  onClick={handleCreateWorktree}
+                  disabled={worktreeLoading}
+                  title="Create an isolated git worktree for this PR's branch"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-wo-bg-subtle text-[10px] text-wo-text-tertiary hover:text-wo-text transition-colors"
+                >
+                  {worktreeLoading ? <Loader2 size={9} className="animate-spin" /> : <GitBranch size={9} />}
+                  Worktree
+                </button>
+              ) : null}
               {loading && <Loader2 size={12} className="animate-spin text-wo-accent" />}
             </div>
             <h1 className="text-lg font-semibold truncate">{pr.title}</h1>
@@ -178,7 +230,10 @@ export function PRDetailPage({
             isAuthor={isAuthor}
             selectedCli={selectedCli}
             rubricCategories={rubricCategories}
+            worktree={worktree}
             onStartAgent={onStartAgent}
+            onCreateWorktree={handleCreateWorktree}
+            onRemoveWorktree={handleRemoveWorktree}
           />
         )}
       </div>

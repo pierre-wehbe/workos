@@ -30,6 +30,7 @@ query($owner: String!, $repo: String!, $number: Int!) {
       createdAt
       updatedAt
       headRefOid
+      headRefName
       additions
       deletions
       changedFiles
@@ -72,7 +73,8 @@ async function fetchPRDetail(owner, repo, number) {
       isDraft: pr.isDraft ?? false,
       createdAt: pr.createdAt,
       updatedAt: pr.updatedAt,
-      headRefOid: pr.headRefOid,
+      headSha: pr.headRefOid,
+      headBranch: pr.headRefName,
       additions: pr.additions,
       deletions: pr.deletions,
       changedFiles: pr.changedFiles,

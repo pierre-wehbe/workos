@@ -5,6 +5,7 @@ import { useProjects } from "../../lib/use-projects";
 import { ipc } from "../../lib/ipc";
 import { ProjectCard } from "./ProjectCard";
 import { AddProjectDialog } from "./AddProjectDialog";
+import { DashboardWorktrees } from "../../components/DashboardWorktrees";
 
 interface DashboardPageProps {
   workspace: Workspace;
@@ -96,6 +97,8 @@ export function DashboardPage({ workspace, onOpenProject, runningProcessIds, onS
           ))}
         </div>
       )}
+
+      {projects.length > 0 && <DashboardWorktrees projects={projects} />}
 
       {showAdd && (
         <AddProjectDialog

@@ -229,6 +229,7 @@ export default function App() {
                       rubricCategories={rubricCategories}
                       rubricThresholds={rubricThresholds}
                       agentTasks={agentTasks}
+                      projects={allProjects}
                       onStartAgent={startAgent}
                       onBack={() => setSelectedPR(null)}
                     />

@@ -11,6 +11,7 @@ const github = require("./github.js");
 const prDetail = require("./pr-detail.js");
 const agents = require("./agents.js");
 const rubric = require("./rubric.js");
+const worktrees = require("./worktrees.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow = null;
@@ -259,8 +260,6 @@ app.whenReady().then(() => {
   ipcMain.handle("agent:clear-all-completed", () => agents.clearAllCompleted());
   ipcMain.handle("agent:run-prompt", (_e, cli, prompt) => agents.runPrompt(cli, prompt));
   ipcMain.handle("agent:running-count", () => agents.getRunningCount());
-  ipcMain.handle("agent:create-worktree", (_e, repoPath, branch) => agents.createWorktree(repoPath, branch));
-  ipcMain.handle("agent:remove-worktree", (_e, repoPath, worktreePath) => agents.removeWorktree(repoPath, worktreePath));
 
   // --- Rubric ---
   ipcMain.handle("rubric:get-categories", () => rubric.getCategories());
@@ -279,6 +278,13 @@ app.whenReady().then(() => {
   ipcMain.handle("discussion:create", (_e, data) => db.createDiscussion(data));
   ipcMain.handle("discussion:add-message", (_e, data) => db.addDiscussionMessage(data));
   ipcMain.handle("discussion:delete", (_e, id) => db.deleteDiscussion(id));
+
+  // --- Worktrees ---
+  ipcMain.handle("worktree:list", (_e, repoPath) => worktrees.listWorktrees(repoPath));
+  ipcMain.handle("worktree:sync-status", (_e, repoPath, worktreePath) => worktrees.checkSyncStatus(repoPath, worktreePath));
+  ipcMain.handle("worktree:create", (_e, repoPath, branch, targetPath) => worktrees.createWorktree(repoPath, branch, targetPath));
+  ipcMain.handle("worktree:remove", (_e, repoPath, worktreePath) => worktrees.removeWorktree(repoPath, worktreePath));
+  ipcMain.handle("worktree:prune", (_e, repoPath) => worktrees.pruneWorktrees(repoPath));
 
   // --- Processes ---
   ipcMain.handle("process:start", (_e, data) => processes.startProcess(data));

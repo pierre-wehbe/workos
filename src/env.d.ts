@@ -123,8 +123,6 @@ interface ElectronAPI {
   clearAllCompletedAgents: () => Promise<void>;
   getAgentRunningCount: () => Promise<number>;
   runAgentPrompt: (cli: string, prompt: string) => Promise<{ ok: boolean; output: string }>;
-  createWorktree: (repoPath: string, branch: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
-  removeWorktree: (repoPath: string, worktreePath: string) => Promise<{ ok: boolean; error?: string }>;
   onAgentUpdate: (cb: (task: import("./lib/pr-types").AgentTask) => void) => () => void;
   onAgentOutput: (cb: (id: string, chunk: string) => void) => () => void;
 
@@ -145,6 +143,13 @@ interface ElectronAPI {
   createDiscussion: (data: { prId: string; selectedText: string; context?: string }) => Promise<import("./lib/pr-types").Discussion>;
   addDiscussionMessage: (data: { discussionId: string; role: string; content: string; cli?: string }) => Promise<import("./lib/pr-types").DiscussionMessage>;
   deleteDiscussion: (id: string) => Promise<void>;
+
+  // Worktrees
+  listWorktrees: (repoPath: string) => Promise<import("./lib/pr-types").WorktreeInfo[]>;
+  checkWorktreeSyncStatus: (repoPath: string, worktreePath: string) => Promise<string | null>;
+  createWorktreeForBranch: (repoPath: string, branch: string, targetPath?: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  removeWorktree: (repoPath: string, worktreePath: string) => Promise<{ ok: boolean; error?: string }>;
+  pruneWorktrees: (repoPath: string) => Promise<void>;
 }
 
 declare global {
