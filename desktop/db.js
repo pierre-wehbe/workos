@@ -247,6 +247,10 @@ function getProjects(workspaceId) {
   return db.prepare("SELECT * FROM projects WHERE workspace_id = ? ORDER BY pinned DESC, name").all(workspaceId).map(rowToProject);
 }
 
+function getAllProjects() {
+  return db.prepare("SELECT * FROM projects ORDER BY name").all().map(rowToProject);
+}
+
 function createProject({ workspaceId, name, repoUrl, localPath, devCommand, ide, bootstrapCommand }) {
   const id = uuid();
   db.prepare(
@@ -579,7 +583,7 @@ function deleteDiscussion(id) {
 module.exports = {
   init, getMeta, setMeta, getSetupComplete, setSetupComplete,
   getWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, getActiveWorkspace, setActiveWorkspace,
-  getProjects, createProject, updateProject, getProjectById, deleteProject,
+  getProjects, getAllProjects, createProject, updateProject, getProjectById, deleteProject,
   exportConfig, importConfig,
   getTools, createTool, deleteTool, updateTool,
   getPrCache, listPrCaches, upsertPrCache, cleanupPrCache, updatePrState,

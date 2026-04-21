@@ -1,6 +1,17 @@
 /// <reference types="vite/client" />
 
-import type { AppConfig, Project, ThemeMode, Workspace } from "./lib/types";
+import type {
+  AgentContextFile,
+  AgentContextSnapshot,
+  AppConfig,
+  Project,
+  RepoCodexSetupReport,
+  SkillPackage,
+  SkillScope,
+  SkillStudioTarget,
+  ThemeMode,
+  Workspace,
+} from "./lib/types";
 
 interface ElectronAPI {
   // App
@@ -103,6 +114,27 @@ interface ElectronAPI {
   githubUserOrgs: () => Promise<string[]>;
   updateWorkspace: (id: string, data: { githubOrgs?: string[]; name?: string; org?: string }) => Promise<import("./lib/types").Workspace>;
   onGithubUpdate: (cb: (data: import("./lib/types").GitHubData) => void) => () => void;
+
+  // Agent Context
+  getAgentContext: (data: { cli: import("./lib/types").AICli; workspacePath?: string | null; projectPath?: string | null }) => Promise<AgentContextSnapshot>;
+  getCodexRepoSetup: (data: { workspacePath?: string | null; projectPath?: string | null }) => Promise<RepoCodexSetupReport>;
+  getSkillStudioTargets: (data: { cli: import("./lib/types").AICli; workspacePath?: string | null; projectPath?: string | null }) => Promise<{ cli: import("./lib/types").AICli; targets: SkillStudioTarget[] }>;
+  readSkillPackage: (filePath: string, data: { cli?: import("./lib/types").AICli; workspacePath?: string | null; projectPath?: string | null }) => Promise<SkillPackage>;
+  saveSkillPackage: (data: {
+    cli: import("./lib/types").AICli;
+    scope: SkillScope;
+    workspacePath?: string | null;
+    projectPath?: string | null;
+    skillName: string;
+    skillMd: string;
+    scripts: Array<{ path: string; content: string }>;
+    skillFilePath?: string | null;
+  }) => Promise<SkillPackage>;
+  readAgentContextFile: (filePath: string) => Promise<AgentContextFile>;
+  saveAgentContextFile: (filePath: string, content: string) => Promise<AgentContextFile>;
+  createAgentContextDirectory: (dirPath: string) => Promise<{ path: string; exists: boolean }>;
+  deleteAgentContextSkill: (filePath: string) => Promise<{ path: string; deleted: boolean }>;
+  setAgentContextPluginEnabled: (pluginId: string, enabled: boolean) => Promise<AgentContextFile>;
 
   // PR Detail
   fetchPRDetail: (owner: string, repo: string, number: number) => Promise<import("./lib/pr-types").PRDetail | null>;

@@ -12,6 +12,7 @@ const prDetail = require("./pr-detail.js");
 const agents = require("./agents.js");
 const rubric = require("./rubric.js");
 const worktrees = require("./worktrees.js");
+const instructions = require("./instructions.js");
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 let mainWindow = null;
@@ -240,6 +241,18 @@ app.whenReady().then(() => {
   ipcMain.handle("github:user-orgs", () => github.getUserOrgs());
   ipcMain.handle("db:update-workspace", (_e, id, data) => db.updateWorkspace(id, data));
   ipcMain.handle("github:check", () => github.checkGhInstalled());
+
+  // --- Agent Context ---
+  ipcMain.handle("context:get", (_e, data) => instructions.getAgentContext(data || {}));
+  ipcMain.handle("context:get-codex-setup", (_e, data) => instructions.getRepoCodexSetup(data || {}));
+  ipcMain.handle("context:get-skill-targets", (_e, data) => instructions.getSkillStudioTargets(data || {}));
+  ipcMain.handle("context:read-skill-package", (_e, filePath, data) => instructions.readSkillPackage(filePath, data || {}));
+  ipcMain.handle("context:save-skill-package", (_e, data) => instructions.saveSkillPackage(data || {}));
+  ipcMain.handle("context:read-file", (_e, filePath) => instructions.readArtifactFile(filePath));
+  ipcMain.handle("context:save-file", (_e, filePath, content) => instructions.saveArtifactFile(filePath, content));
+  ipcMain.handle("context:create-directory", (_e, dirPath) => instructions.createArtifactDirectory(dirPath));
+  ipcMain.handle("context:delete-skill", (_e, filePath) => instructions.deleteSkillArtifact(filePath));
+  ipcMain.handle("context:set-plugin-enabled", (_e, pluginId, enabled) => instructions.setPluginEnabled(pluginId, enabled));
 
   // --- PR Detail ---
   ipcMain.handle("pr:fetch-detail", (_e, owner, repo, number) => prDetail.fetchPRDetail(owner, repo, number));

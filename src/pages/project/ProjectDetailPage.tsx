@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ChevronDown, FolderOpen, GitBranch, Maximize2, Play, RotateCw, Square, Trash2 } from "lucide-react";
-import type { ProcessEntry, Project } from "../../lib/types";
+import type { AgentContextIntent, AICli, ProcessEntry, Project, Workspace } from "../../lib/types";
 import { ipc } from "../../lib/ipc";
 import { Terminal } from "../../components/Terminal";
 import { FullscreenTerminal } from "../../components/FullscreenTerminal";
 import { ToolsTab } from "./ToolsTab";
 import { WorktreeList } from "../../components/WorktreeList";
+import { ProjectContextTab } from "./ProjectContextTab";
 
 interface ProjectDetailPageProps {
   project: Project;
   processes: ProcessEntry[];
-  workspaceId: string;
-  workspaceName: string;
+  workspace: Workspace | null;
+  selectedCli: AICli;
   onStartProcess: (data: {
     projectId: string; projectName: string; workspaceId: string;
     workspaceName: string; toolName: string; command: string; workingDir?: string;
@@ -19,14 +20,15 @@ interface ProjectDetailPageProps {
   onStopProcess: (processId: string) => void;
   onBack: () => void;
   onDeleted: () => void;
+  onOpenSettingsAgentContext: (intent: AgentContextIntent) => void;
 }
 
 export function ProjectDetailPage({
-  project, processes, workspaceId, workspaceName,
-  onStartProcess, onStopProcess, onBack, onDeleted,
+  project, processes, workspace, selectedCli,
+  onStartProcess, onStopProcess, onBack, onDeleted, onOpenSettingsAgentContext,
 }: ProjectDetailPageProps) {
   const [branch, setBranch] = useState<string | null>(null);
-  const [tab, setTab] = useState<"tools" | "terminal" | "worktrees">("tools");
+  const [tab, setTab] = useState<"context" | "tools" | "terminal" | "worktrees">("tools");
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -84,8 +86,8 @@ export function ProjectDetailPage({
     onStartProcess({
       projectId: project.id,
       projectName: project.name,
-      workspaceId,
-      workspaceName,
+      workspaceId: workspace?.id ?? "",
+      workspaceName: workspace?.name ?? "",
       toolName: project.devCommand,
       command: project.devCommand,
       workingDir: project.localPath,
@@ -99,8 +101,8 @@ export function ProjectDetailPage({
     onStartProcess({
       projectId: project.id,
       projectName: project.name,
-      workspaceId,
-      workspaceName,
+      workspaceId: workspace?.id ?? "",
+      workspaceName: workspace?.name ?? "",
       toolName,
       command,
       workingDir: fullPath,
@@ -220,6 +222,17 @@ export function ProjectDetailPage({
           <GitBranch size={14} />
           Worktrees
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("context")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            tab === "context"
+              ? "border-wo-accent text-wo-accent"
+              : "border-transparent text-wo-text-tertiary hover:text-wo-text-secondary"
+          }`}
+        >
+          Agent Context
+        </button>
       </div>
 
       {/* Terminal */}
@@ -302,6 +315,17 @@ export function ProjectDetailPage({
 
       {tab === "tools" && (
         <ToolsTab project={project} onRunTool={handleRunTool} />
+      )}
+
+      {tab === "context" && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ProjectContextTab
+            project={project}
+            workspace={workspace}
+            selectedCli={selectedCli}
+            onOpenSettingsAgentContext={onOpenSettingsAgentContext}
+          />
+        </div>
       )}
 
       {tab === "worktrees" && (

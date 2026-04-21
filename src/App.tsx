@@ -11,7 +11,7 @@ import { useWorkspaces } from "./lib/use-workspaces";
 import { useProjects } from "./lib/use-projects";
 import { useGitHub } from "./lib/use-github";
 import { useRubric } from "./lib/use-rubric";
-import type { AICli, AppConfig, GitHubPR, Project } from "./lib/types";
+import type { AgentContextIntent, AICli, AppConfig, GitHubPR, Project } from "./lib/types";
 import type { PRCacheEntry } from "./lib/pr-types";
 import { ProcessBadge } from "./components/ProcessBadge";
 import { ProcessPanel } from "./components/ProcessPanel";
@@ -36,6 +36,7 @@ export default function App() {
   const github = useGitHub();
   const [selectedAICli, setSelectedAICli] = useState<AICli>("codex");
   const [selectedPR, setSelectedPR] = useState<GitHubPR | null>(null);
+  const [settingsAgentContextIntent, setSettingsAgentContextIntent] = useState<AgentContextIntent | null>(null);
   const { categories: rubricCategories, thresholds: rubricThresholds } = useRubric();
   const [prCacheMap, setPrCacheMap] = useState<Record<string, PRCacheEntry>>({});
 
@@ -194,7 +195,12 @@ export default function App() {
               onSwitchWorkspace={switchWorkspace}
               onWorkspaceCreated={refreshWorkspaces}
               currentView={selectedProject ? "project" : view}
-              onNavigate={(v) => { setView(v); setSelectedProject(null); setSelectedPR(null); }}
+              onNavigate={(v) => {
+                setView(v);
+                setSelectedProject(null);
+                setSelectedPR(null);
+                setSettingsAgentContextIntent(null);
+              }}
               onOpenProject={(p) => { setSelectedProject(p); setView("dashboard"); }}
               selectedProjectId={selectedProject?.id ?? null}
             />
@@ -203,12 +209,17 @@ export default function App() {
                 <ProjectDetailPage
                   project={selectedProject}
                   processes={processes}
-                  workspaceId={activeWorkspace?.id ?? ""}
-                  workspaceName={activeWorkspace?.name ?? ""}
+                  workspace={activeWorkspace}
+                  selectedCli={selectedAICli}
                   onStartProcess={startProcess}
                   onStopProcess={stopProcess}
                   onBack={() => setSelectedProject(null)}
                   onDeleted={() => { setSelectedProject(null); }}
+                  onOpenSettingsAgentContext={(intent) => {
+                    setSettingsAgentContextIntent(intent);
+                    setSelectedProject(null);
+                    setView("settings");
+                  }}
                 />
               ) : view === "dashboard" && activeWorkspace ? (
                 <DashboardPage
@@ -252,6 +263,8 @@ export default function App() {
                 <SettingsPage
                   workspaces={workspaces}
                   activeWorkspace={activeWorkspace}
+                  selectedCli={selectedAICli}
+                  initialAgentContextIntent={settingsAgentContextIntent}
                   onSwitchWorkspace={switchWorkspace}
                   onRefresh={refreshWorkspaces}
                 />
