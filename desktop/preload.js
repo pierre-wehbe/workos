@@ -86,6 +86,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("github:update", handler);
   },
 
+  // Agent Context
+  getAgentContext: (data) => ipcRenderer.invoke("context:get", data),
+  getCodexRepoSetup: (data) => ipcRenderer.invoke("context:get-codex-setup", data),
+  getSkillStudioTargets: (data) => ipcRenderer.invoke("context:get-skill-targets", data),
+  readSkillPackage: (filePath, data) => ipcRenderer.invoke("context:read-skill-package", filePath, data),
+  saveSkillPackage: (data) => ipcRenderer.invoke("context:save-skill-package", data),
+  readAgentContextFile: (filePath) => ipcRenderer.invoke("context:read-file", filePath),
+  saveAgentContextFile: (filePath, content) => ipcRenderer.invoke("context:save-file", filePath, content),
+  createAgentContextDirectory: (dirPath) => ipcRenderer.invoke("context:create-directory", dirPath),
+  deleteAgentContextSkill: (filePath) => ipcRenderer.invoke("context:delete-skill", filePath),
+  setAgentContextPluginEnabled: (pluginId, enabled) => ipcRenderer.invoke("context:set-plugin-enabled", pluginId, enabled),
+
   // PR Detail
   fetchPRDetail: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-detail", owner, repo, number),
   fetchPRHeadSha: (owner, repo, number) => ipcRenderer.invoke("pr:fetch-head-sha", owner, repo, number),
